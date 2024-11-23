@@ -1,5 +1,5 @@
 setup:
-	pre-commit install
+	poetry install && pre-commit install
 
 run:
 	python manage.py runserver

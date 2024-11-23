@@ -13,7 +13,7 @@ except Exception as e:
 SECRET_KEY = config.django_secret_key
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [f"{config.fly_app_name}.fly.dev"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",

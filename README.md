@@ -4,7 +4,8 @@
 
 Prerequisites:
 - python3
-- uv
+- pipx
+- poetry
 
 1. Create a virtual environment
 
