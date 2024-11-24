@@ -1,14 +1,17 @@
 setup:
-	pipx install poetry && poetry install && pre-commit install
+	cd manaql && pipx install poetry && poetry install && pre-commit install
 
 run:
-	python manage.py runserver
+	@source scripts/set-env.sh && python3 manaql/manage.py ingest
+
+download:
+	@source scripts/set-env.sh && python3 manaql/manage.py ingest --save-json --json-path=manaql/ingest/artifacts/all_cards.json
 
 migrations:
-	@source scripts/set-env.sh && python3 manage.py makemigrations
+	@source scripts/set-env.sh && python3 manaql/manage.py makemigrations database
 
 migrate:
-	@source scripts/set-env.sh && python3 manage.py migrate
+	@source scripts/set-env.sh && python3 manaql/manage.py migrate database
 
 dev-db:
 	docker compose -p manaql -f docker-compose.yml up --detach

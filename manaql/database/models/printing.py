@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
 from database.models.card import Card
-from types.finish import Finish
+from common.finish import Finish
 
 
 class Printing(models.Model):
@@ -22,3 +22,6 @@ class Printing(models.Model):
     price_eur = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     price_eur_foil = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     price_eur_etched = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+
+    class Meta:
+        db_table = "printing"
