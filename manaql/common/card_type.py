@@ -21,6 +21,7 @@ class CardType(str, Enum):
     Scheme = "Scheme"
     Sorcery = "Sorcery"
     Vanguard = "Vanguard"
+    Unknown = "Unknown"
 
     @classmethod
     def choices(cls):

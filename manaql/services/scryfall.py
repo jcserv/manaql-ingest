@@ -6,7 +6,7 @@ import requests
 from common.bulk_data import BulkData
 
 
-class ScryfallClient:
+class ScryfallService:
     BASE_URL = "https://api.scryfall.com"
 
     def __init__(self, app_name: str, version: str):
@@ -82,7 +82,7 @@ class ScryfallClient:
         ]
 
     def download_all_cards(
-        self, save_path: Optional[str] = None
+        self, save_path: Optional[str] = None, dry_run: bool = False
     ) -> List[Dict[str, Any]]:
         """
         Download and optionally save the all cards bulk data.
@@ -93,19 +93,18 @@ class ScryfallClient:
         Returns:
             List of card objects from the bulk data
         """
-        # Get bulk data information
         bulk_data = self.get_bulk_data()
         all_cards_data = next(item for item in bulk_data if item.type == "all_cards")
 
-        # Download the data
         print(f"Downloading {all_cards_data.size / 1024 / 1024:.1f} MB of card data...")
         response = requests.get(all_cards_data.download_uri)
         response.raise_for_status()
 
         cards = response.json()
         print("Download complete.")
-        # Optionally save to file
-        if save_path:
+        if dry_run:
+            print("Dry run detected, not saving data.")
+        if not dry_run and save_path:
             print(f"Saving data to {save_path}...")
             with open(save_path, "w", encoding="utf-8") as f:
                 json.dump(cards, f, indent=2)
