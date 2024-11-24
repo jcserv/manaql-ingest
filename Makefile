@@ -2,7 +2,10 @@ setup:
 	cd manaql && pipx install poetry && poetry install && pre-commit install
 
 run:
-	@source scripts/set-env.sh && python manaql/manage.py runserver
+	@source scripts/set-env.sh && python3 manaql/manage.py ingest
+
+download:
+	@source scripts/set-env.sh && python3 manaql/manage.py ingest --save-json --json-path=manaql/ingest/artifacts/all_cards.json
 
 migrations:
 	@source scripts/set-env.sh && python3 manaql/manage.py makemigrations database

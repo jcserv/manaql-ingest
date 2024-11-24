@@ -160,6 +160,9 @@ class Command(BaseCommand):
                 save_path=str(json_path) if options["save_json"] else None
             )
 
+        if options["save_json"]:
+            return
+
         # Process the data
         self.stdout.write("Processing card data...")
         cards_created, printings_created = self._process_cards(cards_data)

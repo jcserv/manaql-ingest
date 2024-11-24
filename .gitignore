@@ -1,3 +1,5 @@
+manaql/ingest/artifacts/*.json
+
 .ruff_cache/
 
 # Byte-compiled / optimized / DLL files

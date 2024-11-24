@@ -103,7 +103,7 @@ class ScryfallClient:
         response.raise_for_status()
 
         cards = response.json()
-
+        print("Download complete.")
         # Optionally save to file
         if save_path:
             print(f"Saving data to {save_path}...")
