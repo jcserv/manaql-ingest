@@ -1,5 +1,6 @@
-from manaql.config import Config
 from pathlib import Path
+
+from ingest.config import Config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -22,6 +23,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "database",
 ]
 
 MIDDLEWARE = [
@@ -34,7 +36,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "manaql.urls"
+ROOT_URLCONF = "ingest.urls"
 
 TEMPLATES = [
     {

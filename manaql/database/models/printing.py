@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
 from database.models.card import Card
-from types.finish import Finish
+from common.finish import Finish
 
 
 class Printing(models.Model):

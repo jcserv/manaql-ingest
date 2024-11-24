@@ -1,6 +1,6 @@
 from django.db import models
 
-from types.card_type import CardType
+from common.card_type import CardType
 
 
 class Card(models.Model):
