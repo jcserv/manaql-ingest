@@ -1,5 +1,5 @@
 setup:
-	poetry install && pre-commit install
+	pipx install poetry && poetry install && pre-commit install
 
 run:
 	python manage.py runserver
@@ -21,3 +21,6 @@ test-db:
 
 test-db-down:
 	docker compose -p manaql-test -f docker-compose.test.yml down -v
+
+gen-models:
+	datamodel-codegen --input schema.graphql --input-file-type graphql --output model.py

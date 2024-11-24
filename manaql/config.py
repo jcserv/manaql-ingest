@@ -10,7 +10,7 @@ class Config:
         self.host = os.getenv("POSTGRES_HOST")
         self.db_port = os.getenv("POSTGRES_PORT")
 
-        self.fly_app_name = os.getenv("FLY_APP_NAME")
+        # self.fly_app_name = os.getenv("FLY_APP_NAME")
 
     def validate(self):
         if not self.django_secret_key:
@@ -25,5 +25,5 @@ class Config:
             raise Exception("POSTGRES_HOST is not set")
         if not self.db_port:
             raise Exception("POSTGRES_PORT is not set")
-        if not self.fly_app_name:
-            raise Exception("FLY_APP_NAME is not set")
+        # if not self.fly_app_name:
+        #     raise Exception("FLY_APP_NAME is not set")
