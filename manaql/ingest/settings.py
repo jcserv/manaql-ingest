@@ -54,7 +54,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "manaql.wsgi.application"
+WSGI_APPLICATION = "ingest.wsgi.application"
 
 
 DATABASES = {

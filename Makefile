@@ -2,7 +2,7 @@ setup:
 	cd manaql && pipx install poetry && poetry install && pre-commit install
 
 run:
-	python manaql/manage.py runserver
+	@source scripts/set-env.sh && python manaql/manage.py runserver
 
 migrations:
 	@source scripts/set-env.sh && python3 manaql/manage.py makemigrations database
