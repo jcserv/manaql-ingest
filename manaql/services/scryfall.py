@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional
 
 import requests
 from common.bulk_data import BulkData
-from common.scryfall import SFCard
 
 
 class ScryfallService:
@@ -84,7 +83,7 @@ class ScryfallService:
 
     def download_all_cards(
         self, save_path: Optional[str] = None, dry_run: bool = False
-    ) -> List[SFCard]:
+    ) -> List[Dict]:
         """
         Download and optionally save the all cards bulk data.
 
@@ -101,7 +100,7 @@ class ScryfallService:
         response = requests.get(all_cards_data.download_uri)
         response.raise_for_status()
 
-        cards = response.json()
+        cards: List[Dict] = response.json()
         print("Download complete.")
         if dry_run:
             print("Dry run detected, not saving data.")
@@ -110,4 +109,4 @@ class ScryfallService:
             with open(save_path, "w", encoding="utf-8") as f:
                 json.dump(cards, f, indent=2)
 
-        return SFCard.from_list(cards)
+        return cards
