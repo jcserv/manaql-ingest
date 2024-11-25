@@ -26,3 +26,26 @@ class CardType(str, Enum):
     @classmethod
     def choices(cls):
         return [(item.value, item.name) for item in cls]
+
+
+def get_main_type(type_line: str) -> CardType:
+    """Map Scryfall card type to our enum values."""
+    if not type_line:
+        return CardType.Unknown
+    if CardType.Planeswalker.value in type_line:
+        return CardType.Planeswalker
+    if CardType.Battle.value in type_line:
+        return CardType.Battle
+    if CardType.Land.value in type_line:
+        return CardType.Land
+    if CardType.Creature.value in type_line:
+        return CardType.Creature
+    if CardType.Artifact.value in type_line:
+        return CardType.Artifact
+    if CardType.Enchantment.value in type_line:
+        return CardType.Enchantment
+    if CardType.Sorcery.value in type_line:
+        return CardType.Sorcery
+    if CardType.Instant.value in type_line:
+        return CardType.Instant
+    return CardType.Unknown

@@ -1,51 +1,13 @@
-from django.db import transaction
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
-from common.card_type import CardType
+from common.card_type import get_main_type
 from database.models.card import Card
 from database.models.printing import Printing
+from django.db import transaction
 
 
 class CardProcessor:
     """Service class for processing card data into database records."""
-
-    @staticmethod
-    def map_card_type(card_data: Dict[str, Any]) -> str:
-        """Map Scryfall card type to our enum values."""
-        type_line = card_data.get("type_line", "").lower()
-
-        # Map card types based on type_line
-        if "land" in type_line:
-            return CardType.Land
-        if "creature" in type_line:
-            return CardType.Creature
-        elif "planeswalker" in type_line:
-            return CardType.Planeswalker
-        elif "instant" in type_line:
-            return CardType.Instant
-        elif "sorcery" in type_line:
-            return CardType.Sorcery
-        elif "artifact" in type_line:
-            return CardType.Artifact
-        elif "enchantment" in type_line:
-            return CardType.Enchantment
-        elif "tribal" in type_line:
-            return CardType.Kindred
-        elif "battle" in type_line:
-            return CardType.Battle
-        elif "conspiracy" in type_line:
-            return CardType.Conspiracy
-        elif "dungeon" in type_line:
-            return CardType.Dungeon
-        elif "phenomenon" in type_line:
-            return CardType.Phenomenon
-        elif "plane" in type_line:
-            return CardType.Plane
-        elif "scheme" in type_line:
-            return CardType.Scheme
-        elif "vanguard" in type_line:
-            return CardType.Vanguard
-        return CardType.Unknown
 
     @staticmethod
     def get_image_uris(card_data: Dict[str, Any]) -> tuple[str | None, str | None]:
@@ -72,12 +34,10 @@ class CardProcessor:
         printings_created = 0
 
         with transaction.atomic():
-            # First, clear existing data
             stdout.write("Clearing existing data...")
             Printing.objects.all().delete()
             Card.objects.all().delete()
 
-            # Process each card
             stdout.write("Processing cards...")
             cards_by_name = {}
 
@@ -88,17 +48,14 @@ class CardProcessor:
                 if card_name in cards_by_name:
                     card = cards_by_name[card_name]
                 else:
-                    # Create new card
                     card = Card.objects.create(
-                        name=card_name, main_type=self.map_card_type(card_data)
+                        name=card_name,
+                        main_type=get_main_type(card_data.get("type_line", "")),
                     )
                     cards_by_name[card_name] = card
                     cards_created += 1
 
-                # Get image URIs
                 image_uri, back_image_uri = self.get_image_uris(card_data)
-
-                # Create printing
                 if image_uri:  # Only create printing if we have an image
                     Printing.objects.create(
                         card=card,
