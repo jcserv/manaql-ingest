@@ -6,7 +6,7 @@ from database.models.card import Card
 
 
 class Printing(models.Model):
-    id = models.BigIntegerField(primary_key=True)
+    id = models.AutoField(primary_key=True)
     card_id = models.ForeignKey(Card, on_delete=models.CASCADE)
     set_code = models.CharField(max_length=7, null=False, db_column="set")
     set_name = models.CharField(max_length=255, null=False)

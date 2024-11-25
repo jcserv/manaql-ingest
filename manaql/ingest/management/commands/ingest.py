@@ -22,9 +22,20 @@ class Command(BaseCommand):
         self.stdout.write("Starting card data ingest...")
 
         if options["file_path"]:
-            file_path = Path(options["file_path"])
+            artifacts_dir = Path(__file__).resolve().parent.parent.parent / "artifacts"
+            file_path = artifacts_dir / options["file_path"]
+
+            if not artifacts_dir.exists():
+                raise CommandError(
+                    f"Artifacts directory not found at {artifacts_dir}. "
+                    "Please create this directory and ensure your data file is placed there."
+                )
+
             if not file_path.exists():
-                raise CommandError(f"File not found: {file_path}")
+                raise CommandError(
+                    f"File not found: {file_path}\n"
+                    f"Please ensure your file exists in the artifacts directory: {artifacts_dir}"
+                )
 
             self.stdout.write(f"Loading data from {file_path}...")
             with open(file_path, "r", encoding="utf-8") as f:
@@ -36,9 +47,7 @@ class Command(BaseCommand):
 
         self.stdout.write("Processing card data...")
         processor = CardProcessor()
-        cards_created, printings_created = processor.process_cards(
-            cards_data, self.stdout
-        )
+        cards_created, printings_created = processor.process_cards(cards_data)
 
         end_time = datetime.now()
         duration = end_time - start_time

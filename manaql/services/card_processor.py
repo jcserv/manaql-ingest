@@ -29,38 +29,50 @@ class CardProcessor:
 
         return image_uri, back_image_uri
 
-    def process_cards(self, cards_data: List[Dict[str, Any]], stdout):
-        """Process card data and save to database."""
+    def process_cards(self, cards_data: List[Dict[str, Any]]) -> tuple[int, int]:
+        """Process card data and save to database.
+
+        Returns:
+            tuple[int, int]: Count of (cards_created, printings_created)
+        """
         cards_created = 0
         printings_created = 0
+        seen_cards = set()  # Track which cards we've already seen
 
         with transaction.atomic():
-            stdout.write("Clearing existing data...")
+            print("Clearing existing data...")
             Printing.objects.all().delete()
             Card.objects.all().delete()
 
-            stdout.write("Processing cards...")
+            print("Processing cards...")
             cards_by_name = {}
 
+            # First pass: Create all unique cards
             for card_data in cards_data:
                 card_name = card_data["name"]
 
-                # Skip if we've already processed this card
-                if card_name in cards_by_name:
-                    card = cards_by_name[card_name]
-                else:
+                if card_name not in seen_cards:
                     card = Card.objects.create(
                         name=card_name,
                         main_type=get_main_type(card_data.get("type_line", "")),
                     )
                     cards_by_name[card_name] = card
                     cards_created += 1
+                    seen_cards.add(card_name)
+
+                    if cards_created % 1000 == 0:
+                        print(f"Created {cards_created} unique cards...")
+
+            # Second pass: Create all printings
+            for card_data in cards_data:
+                card_name = card_data["name"]
+                card = cards_by_name[card_name]  # We know this exists from first pass
 
                 image_uri, back_image_uri = self.get_image_uris(card_data)
                 if image_uri:  # Only create printing if we have an image
                     Printing.objects.create(
-                        card=card,
-                        set=card_data["set"],
+                        card_id=card,
+                        set_code=card_data["set"],
                         set_name=card_data["set_name"],
                         collector_number=card_data["collector_number"],
                         image_uri=image_uri,
@@ -75,10 +87,7 @@ class CardProcessor:
                     )
                     printings_created += 1
 
-                # Progress update every 1000 cards
-                if (cards_created + printings_created) % 1000 == 0:
-                    stdout.write(
-                        f"Processed {cards_created} cards and {printings_created} printings..."
-                    )
+                    if printings_created % 1000 == 0:
+                        print(f"Created {cards_created} cards...")
 
         return cards_created, printings_created
