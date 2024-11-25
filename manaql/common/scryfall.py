@@ -31,7 +31,7 @@ class CardFace:
 
 
 @dataclass
-class ScryfallCard(JSONListWizard):
+class SFCard(JSONListWizard):
     name: str
     set: str
     set_name: str

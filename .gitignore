@@ -1,4 +1,4 @@
-manaql/ingest/artifacts/*.json
+artifacts/*.json
 
 .ruff_cache/
 

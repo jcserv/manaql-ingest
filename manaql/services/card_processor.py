@@ -1,8 +1,7 @@
 from typing import Dict, List
 
-from common.scryfall import ScryfallCard
+from common.scryfall import SFCard
 from database.models.card import Card
-from database.models.failed_card import FailedCard
 from database.models.printing import Printing
 from psycopg2 import IntegrityError
 
@@ -10,7 +9,7 @@ from psycopg2 import IntegrityError
 class CardProcessor:
     """Service class for processing card data into database records."""
 
-    def process_cards(self, scryfall_cards: List[ScryfallCard]) -> tuple[int, int]:
+    def process_cards(self, scryfall_cards: List[SFCard]) -> tuple[int, int]:
         """Process card data and save to database.
 
         Returns:
@@ -36,9 +35,7 @@ class CardProcessor:
                     card = Card.from_scryfall_card(scryfall_card)
                     card.save()
                 except IntegrityError as e:
-                    print(f"Unable to insert {card_name} due to exception: {e}")
-                    f = FailedCard.from_scryfall_card(scryfall_card)
-                    f.save()
+                    print(f"Unable to insert {card_name} as card due to exception: {e}")
                     continue
 
                 cards_by_name[card_name] = card
@@ -57,12 +54,12 @@ class CardProcessor:
                 p = Printing.from_scryfall_card(card, scryfall_card)
                 p.save()
             except Exception as e:
-                print(f"Unable to insert {card_name} due to exception: {e}")
+                print(f"Unable to insert {card_name} as printing due to exception: {e}")
                 continue
 
             printings_created += 1
 
             if printings_created % 1000 == 0:
-                print(f"Created {cards_created} cards...")
+                print(f"Created {printings_created} printings...")
 
         return cards_created, printings_created

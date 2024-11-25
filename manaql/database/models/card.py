@@ -1,5 +1,5 @@
 from common.card_type import CardType, get_main_type
-from common.scryfall import ScryfallCard
+from common.scryfall import SFCard
 from django.db import models
 
 
@@ -9,7 +9,7 @@ class Card(models.Model):
     main_type = models.CharField(max_length=31, null=False, choices=CardType.choices())
 
     @staticmethod
-    def from_scryfall_card(scryfall_card: ScryfallCard):
+    def from_scryfall_card(scryfall_card: SFCard):
         return Card(
             name=scryfall_card.name,
             main_type=get_main_type(scryfall_card.type_line),

@@ -1,5 +1,5 @@
 from .card import Card
-from .failed_card import FailedCard
 from .printing import Printing
+from .scryfall_card import ScryfallCard
 
-__all__ = ["Card", "Printing", "FailedCard"]
+__all__ = ["Card", "Printing", "ScryfallCard"]
