@@ -10,5 +10,16 @@
             "source.fixAll": "explicit"
         },
     },
-    "mypy-type-checker.path": ["mypy"]
+    "mypy-type-checker.path": [
+        "mypy"
+    ],
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./manaql/tests",
+        "-p",
+        "test_*.py"
+    ],
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": true
 }

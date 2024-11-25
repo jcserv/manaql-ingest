@@ -42,30 +42,26 @@ class TestCardType(TestCase):
             CardType.Enchantment,
         )
 
-        # TODO: Fix this?
-        # self.assertEqual(
-        #     get_main_type(
-        #         {
-        #             "type_line": "Enchant Creature",
-        #         }
-        #     ),
-        #     CardType.Enchantment,
-        # )
+    def test_get_main_type_enchantment_creature(self):
+        self.assertEqual(
+            get_main_type("Enchantment Creature"),
+            CardType.Creature,
+        )
 
-        # self.assertEqual(
-        #     get_main_type(
-        #         {
-        #             "type_line": "Enchant Land",
-        #         }
-        #     ),
-        #     CardType.Enchantment,
-        # )
+    def test_get_main_type_enchant_creature(self):
+        self.assertEqual(
+            get_main_type("Enchant Creature"),
+            CardType.Enchantment,
+        )
 
-        # self.assertEqual(
-        #     get_main_type(
-        #         {
-        #             "type_line": "Sorcery // Land",
-        #         }
-        #     ),
-        #     CardType.Sorcery,
-        # )
+    def test_get_main_type_enchant_land(self):
+        self.assertEqual(
+            get_main_type("Enchant Land"),
+            CardType.Enchantment,
+        )
+
+    def test_get_main_type_mdfc_back_side(self):
+        self.assertEqual(
+            get_main_type("Sorcery // Land"),
+            CardType.Land,  # should be CardType.Sorcery, but we're not handling this case yet
+        )

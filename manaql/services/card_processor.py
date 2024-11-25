@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 
 from common.card_type import get_main_type
+from common.finish import get_finishes
 from database.models.card import Card
 from database.models.printing import Printing
 from django.db import transaction
@@ -64,7 +65,7 @@ class CardProcessor:
                         collector_number=card_data["collector_number"],
                         image_uri=image_uri,
                         back_image_uri=back_image_uri,
-                        finishes=card_data.get("finishes", []),
+                        finishes=get_finishes(card_data.get("finishes", [])),
                         price_usd=card_data["prices"].get("usd"),
                         price_usd_foil=card_data["prices"].get("usd_foil"),
                         price_usd_etched=card_data["prices"].get("usd_etched"),
