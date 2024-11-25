@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from common.scryfall import ScryfallCard
 from django.core.management.base import BaseCommand, CommandError
 from services.card_processor import CardProcessor
 from services.scryfall import ScryfallService
@@ -40,6 +41,7 @@ class Command(BaseCommand):
             self.stdout.write(f"Loading data from {file_path}...")
             with open(file_path, "r", encoding="utf-8") as f:
                 cards_data = json.load(f)
+                cards_data = ScryfallCard.from_list(cards_data)
         else:
             self.stdout.write("Downloading fresh data from Scryfall...")
             client = ScryfallService("manaql-ingest", "0.1.0")

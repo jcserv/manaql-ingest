@@ -1,9 +1,10 @@
-import time
 import json
-from typing import Optional, Dict, Any, List
-import requests
+import time
+from typing import Any, Dict, List, Optional
 
+import requests
 from common.bulk_data import BulkData
+from common.scryfall import ScryfallCard
 
 
 class ScryfallService:
@@ -83,7 +84,7 @@ class ScryfallService:
 
     def download_all_cards(
         self, save_path: Optional[str] = None, dry_run: bool = False
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ScryfallCard]:
         """
         Download and optionally save the all cards bulk data.
 
@@ -109,4 +110,4 @@ class ScryfallService:
             with open(save_path, "w", encoding="utf-8") as f:
                 json.dump(cards, f, indent=2)
 
-        return cards
+        return ScryfallCard.from_list(cards)

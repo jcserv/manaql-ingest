@@ -27,7 +27,7 @@ class Command(BaseCommand):
         start_time = datetime.now()
         self.stdout.write("Starting Scryfall data download...")
 
-        artifacts_dir = Path("artifacts")
+        artifacts_dir = Path(__file__).resolve().parent.parent.parent / "artifacts"
         artifacts_dir.mkdir(exist_ok=True)
 
         file_path = artifacts_dir / options["file_name"]

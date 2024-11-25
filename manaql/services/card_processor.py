@@ -1,7 +1,8 @@
-from typing import Any, Dict, List
+from typing import List
 
 from common.card_type import get_main_type
 from common.finish import get_finishes
+from common.scryfall import ScryfallCard
 from database.models.card import Card
 from database.models.printing import Printing
 from django.db import transaction
@@ -11,25 +12,24 @@ class CardProcessor:
     """Service class for processing card data into database records."""
 
     @staticmethod
-    def get_image_uris(card_data: Dict[str, Any]) -> tuple[str | None, str | None]:
+    def get_image_uris(scryfall_card: ScryfallCard) -> tuple[str | None, str | None]:
         """Extract normal and back image URIs from card data."""
         image_uri = None
         back_image_uri = None
 
-        if "image_uris" in card_data:
-            image_uri = card_data["image_uris"].get("normal")
-        elif "card_faces" in card_data and len(card_data["card_faces"]) > 0:
-            if "image_uris" in card_data["card_faces"][0]:
-                image_uri = card_data["card_faces"][0]["image_uris"].get("normal")
+        if scryfall_card.image_uris:
+            image_uri = scryfall_card.image_uris.normal
+        elif scryfall_card.card_faces and len(scryfall_card.card_faces) > 0:
+            if scryfall_card.card_faces[0].image_uris:
+                image_uri = scryfall_card.card_faces[0].image_uris.normal
             if (
-                len(card_data["card_faces"]) > 1
-                and "image_uris" in card_data["card_faces"][1]
+                len(scryfall_card.card_faces) > 1
+                and scryfall_card.card_faces[1].image_uris
             ):
-                back_image_uri = card_data["card_faces"][1]["image_uris"].get("normal")
-
+                back_image_uri = scryfall_card.card_faces[1].image_uris.normal
         return image_uri, back_image_uri
 
-    def process_cards(self, cards_data: List[Dict[str, Any]]) -> tuple[int, int]:
+    def process_cards(self, scryfall_cards: List[ScryfallCard]) -> tuple[int, int]:
         """Process card data and save to database.
 
         Returns:
@@ -48,13 +48,13 @@ class CardProcessor:
             cards_by_name = {}
 
             # First pass: Create all unique cards
-            for card_data in cards_data:
-                card_name = card_data["name"]
+            for scryfall_card in scryfall_cards:
+                card_name = scryfall_card.name
 
                 if card_name not in seen_cards:
                     card = Card.objects.create(
                         name=card_name,
-                        main_type=get_main_type(card_data.get("type_line", "")),
+                        main_type=get_main_type(scryfall_card.type_line),
                     )
                     cards_by_name[card_name] = card
                     cards_created += 1
@@ -64,26 +64,26 @@ class CardProcessor:
                         print(f"Created {cards_created} unique cards...")
 
             # Second pass: Create all printings
-            for card_data in cards_data:
-                card_name = card_data["name"]
+            for scryfall_card in scryfall_cards:
+                card_name = scryfall_card.name
                 card = cards_by_name[card_name]  # We know this exists from first pass
 
-                image_uri, back_image_uri = self.get_image_uris(card_data)
+                image_uri, back_image_uri = self.get_image_uris(scryfall_card)
                 if image_uri:  # Only create printing if we have an image
                     Printing.objects.create(
                         card_id=card,
-                        set_code=card_data["set"],
-                        set_name=card_data["set_name"],
-                        collector_number=card_data["collector_number"],
+                        set_code=scryfall_card.set,
+                        set_name=scryfall_card.set_name,
+                        collector_number=scryfall_card.collector_number,
                         image_uri=image_uri,
                         back_image_uri=back_image_uri,
-                        finishes=get_finishes(card_data.get("finishes", [])),
-                        price_usd=card_data["prices"].get("usd"),
-                        price_usd_foil=card_data["prices"].get("usd_foil"),
-                        price_usd_etched=card_data["prices"].get("usd_etched"),
-                        price_eur=card_data["prices"].get("eur"),
-                        price_eur_foil=card_data["prices"].get("eur_foil"),
-                        price_eur_etched=None,  # Not provided by Scryfall
+                        finishes=get_finishes(scryfall_card.finishes),
+                        price_usd=scryfall_card.prices.usd,
+                        price_usd_foil=scryfall_card.prices.usd_foil,
+                        price_usd_etched=scryfall_card.prices.usd_etched,
+                        price_eur=scryfall_card.prices.eur,
+                        price_eur_foil=scryfall_card.prices.eur_foil,
+                        price_eur_etched=None,  # TODO:Not provided by Scryfall, can guesstimate?
                     )
                     printings_created += 1
 

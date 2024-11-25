@@ -28,7 +28,7 @@ class CardType(str, Enum):
         return [(item.value, item.name) for item in cls]
 
 
-def get_main_type(type_line: str) -> CardType:
+def get_main_type(type_line: str | None) -> CardType:
     """Map Scryfall card type to our enum values."""
     if not type_line:
         return CardType.Unknown
