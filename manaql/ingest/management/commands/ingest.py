@@ -1,10 +1,10 @@
-from django.core.management.base import BaseCommand, CommandError
+import json
 from datetime import datetime
 from pathlib import Path
-import json
 
-from services.scryfall import ScryfallService
+from django.core.management.base import BaseCommand, CommandError
 from services.card_processor import CardProcessor
+from services.scryfall import ScryfallService
 
 
 class Command(BaseCommand):

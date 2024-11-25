@@ -1,8 +1,8 @@
-from django.db import models
+from common.finish import Finish
 from django.contrib.postgres.fields import ArrayField
+from django.db import models
 
 from database.models.card import Card
-from common.finish import Finish
 
 
 class Printing(models.Model):

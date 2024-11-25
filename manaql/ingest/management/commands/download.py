@@ -1,7 +1,7 @@
-from django.core.management.base import BaseCommand
 from datetime import datetime
 from pathlib import Path
 
+from django.core.management.base import BaseCommand
 from services.scryfall import ScryfallService
 
 
