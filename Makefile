@@ -1,5 +1,10 @@
+.PHONY: setup test run download download-dry-run migrations migrate dev-db dev-db-down
+
 setup:
 	cd manaql && pipx install poetry && poetry install && pre-commit install
+
+test:
+	@source scripts/set-env.sh && python3 manaql/manage.py test tests
 
 run:
 	@source scripts/set-env.sh && python3 manaql/manage.py ingest --file=all_cards.json

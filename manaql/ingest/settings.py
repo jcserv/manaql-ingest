@@ -1,3 +1,5 @@
+import os
+import sys
 from pathlib import Path
 
 from ingest.config import Config
@@ -25,6 +27,18 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "database",
     "ingest",
+]
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+
+TEST_RUNNER = "django.test.runner.DiscoverRunner"
+TEST_DISCOVER_TOP_LEVEL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TEST_DISCOVER_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+TEST_DISCOVER_PATTERNS = [
+    "ingest/tests/test_*.py",
+    "ingest/tests/tests.py",
 ]
 
 MIDDLEWARE = [

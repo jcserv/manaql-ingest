@@ -43,10 +43,4 @@ class Command(BaseCommand):
         end_time = datetime.now()
         duration = end_time - start_time
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"\nIngestion completed in {duration}:\n"
-                f"- Created {cards_created} cards\n"
-                f"- Created {printings_created} printings"
-            )
-        )
+        self.stdout.write(self.style.SUCCESS(f"\nIngestion completed in {duration}"))
