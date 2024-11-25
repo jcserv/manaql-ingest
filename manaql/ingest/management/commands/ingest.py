@@ -1,8 +1,8 @@
 import json
 from datetime import datetime
-from pathlib import Path
 
-from django.core.management.base import BaseCommand, CommandError
+from common.utils import get_artifact_file_path
+from django.core.management.base import BaseCommand
 from services.scryfall import ScryfallService
 from services.scryfall_exporter import ScryfallExporterService
 
@@ -22,24 +22,7 @@ class Command(BaseCommand):
         self.stdout.write("Starting card data ingest...")
 
         if options["file_path"]:
-            artifacts_dir = (
-                Path(__file__).resolve().parent.parent.parent.parent.parent
-                / "artifacts"
-            )
-            file_path = artifacts_dir / options["file_path"]
-
-            if not artifacts_dir.exists():
-                raise CommandError(
-                    f"Artifacts directory not found at {artifacts_dir}. "
-                    "Please create this directory and ensure your data file is placed there."
-                )
-
-            if not file_path.exists():
-                raise CommandError(
-                    f"File not found: {file_path}\n"
-                    f"Please ensure your file exists in the artifacts directory: {artifacts_dir}"
-                )
-
+            file_path = get_artifact_file_path(options["file_path"])
             self.stdout.write(f"Loading data from {file_path}...")
             with open(file_path, "r", encoding="utf-8") as f:
                 cards_data = json.load(f)
