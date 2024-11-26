@@ -12,7 +12,9 @@ class ScryfallExporter:
     def filter(self, scryfall_card: Dict) -> bool:
         if scryfall_card.get("lang", None) != "en":
             return True
-        if scryfall_card.get("set_name", "").lower().endswith("art series"):
+        if scryfall_card.get("layout", "") != "normal":
+            return True
+        if "paper" not in scryfall_card.get("games", []):
             return True
         return False
 

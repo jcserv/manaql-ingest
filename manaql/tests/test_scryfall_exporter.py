@@ -6,20 +6,43 @@ from services.scryfall_exporter import ScryfallExporter
 class TestCardProcessor(TestCase):
     def setUp(self):
         self.exporter = ScryfallExporter()
+        self.default_valid_card = {
+            "lang": "en",
+            "layout": "normal",
+            "games": ["paper"],
+        }
 
     def test_filter_should_filter_out_art_series(self):
         self.assertFalse(
-            self.exporter.filter({"set_name": "Wilds of Eldraine", "lang": "en"})
+            self.exporter.filter(
+                {
+                    **self.default_valid_card,
+                    "layout": "normal",
+                }
+            )
         )
         self.assertTrue(
             self.exporter.filter(
-                {"set_name": "Zendikar Rising Art Series", "lang": "en"}
+                {
+                    **self.default_valid_card,
+                    "layout": "token",
+                }
+            )
+        )
+        self.assertTrue(
+            self.exporter.filter(
+                {
+                    **self.default_valid_card,
+                    "layout": "art_series",
+                }
             )
         )
 
     def test_filter_should_filter_out_non_english(self):
-        self.assertFalse(self.exporter.filter({"lang": "en"}))
-        self.assertTrue(self.exporter.filter({"lang": None}))
+        self.assertFalse(
+            self.exporter.filter({**self.default_valid_card, "lang": "en"})
+        )
+        self.assertTrue(self.exporter.filter({**self.default_valid_card, "lang": None}))
         all_non_eng_langs = [
             "ar",
             "de",
@@ -40,7 +63,35 @@ class TestCardProcessor(TestCase):
         ]
 
         for lang in all_non_eng_langs:
-            self.assertTrue(self.exporter.filter({"lang": lang}))
+            self.assertTrue(
+                self.exporter.filter({**self.default_valid_card, "lang": lang})
+            )
+
+    def test_filter_should_filter_out_non_paper_cards(self):
+        self.assertTrue(
+            self.exporter.filter(
+                {
+                    **self.default_valid_card,
+                    "games": ["mtgo"],
+                }
+            )
+        )
+        self.assertFalse(
+            self.exporter.filter(
+                {
+                    **self.default_valid_card,
+                    "games": ["paper"],
+                }
+            )
+        )
+        self.assertFalse(
+            self.exporter.filter(
+                {
+                    **self.default_valid_card,
+                    "games": ["paper", "mtgo"],
+                }
+            )
+        )
 
     def test_process_cards_should_handle_empty_list(self):
         self.exporter.process_cards([])
