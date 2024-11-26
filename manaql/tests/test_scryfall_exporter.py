@@ -1,7 +1,6 @@
 from database.models.scryfall_card import ScryfallCard
 from django.test import TestCase
-from services.export_strategy import SequentialStrategy, filterCard
-from services.scryfall_exporter import ScryfallExporter
+from services.scryfall_exporter import ScryfallExporter, SequentialStrategy, filterCard
 
 
 class TestCardProcessor(TestCase):

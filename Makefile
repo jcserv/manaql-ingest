@@ -6,17 +6,17 @@ setup:
 test:
 	@source scripts/set-env.sh && python3 manaql/manage.py test tests
 
-run:
-	@source scripts/set-env.sh && python3 manaql/manage.py ingest --file=all_cards.json
-
-run-failed:
-	@source scripts/set-env.sh && python3 manaql/manage.py ingest --file=failed_scryfall_cards.json
-
 download:
 	@source scripts/set-env.sh && python3 manaql/manage.py download --file=all_cards.json
 
 download-dry-run:
 	@source scripts/set-env.sh && python3 manaql/manage.py download --dry-run
+
+ingest:
+	@source scripts/set-env.sh && python3 manaql/manage.py ingest --file=all_cards.json
+
+run:
+	@source scripts/set-env.sh && python3 manaql/manage.py process
 
 migrations:
 	@source scripts/set-env.sh && python3 manaql/manage.py makemigrations database

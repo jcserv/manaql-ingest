@@ -11,7 +11,7 @@ class Printing(models.Model):
     card_id = models.ForeignKey("Card", on_delete=models.CASCADE)
     set_code = models.CharField(max_length=7, null=False, db_column="set")
     set_name = models.CharField(max_length=255, null=False)
-    collector_number = models.CharField(max_length=7, null=False)
+    collector_number = models.CharField(max_length=31, null=False)
 
     image_uri = models.CharField(max_length=255, null=False)
     back_image_uri = models.CharField(max_length=255, null=True)
