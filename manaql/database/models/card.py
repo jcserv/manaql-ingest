@@ -10,7 +10,7 @@ class Card(models.Model):
     main_type = models.CharField(max_length=31, null=False, choices=CardType.choices())
 
     @staticmethod
-    def from_scryfall_card(scryfall_card: ScryfallCard):
+    def from_scryfall_card(scryfall_card: "ScryfallCard"):
         return Card(
             name=scryfall_card.name,
             main_type=get_main_type(scryfall_card.type_line),

@@ -8,7 +8,7 @@ from database.models.scryfall_card import ScryfallCard
 
 class Printing(models.Model):
     id = models.AutoField(primary_key=True)
-    card_id = models.ForeignKey(Card, on_delete=models.CASCADE)
+    card_id = models.ForeignKey("Card", on_delete=models.CASCADE)
     set_code = models.CharField(max_length=7, null=False, db_column="set")
     set_name = models.CharField(max_length=255, null=False)
     collector_number = models.CharField(max_length=7, null=False)
@@ -25,7 +25,7 @@ class Printing(models.Model):
     price_eur_etched = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 
     @staticmethod
-    def get_image_uris(scryfall_card: ScryfallCard) -> tuple[str | None, str | None]:
+    def get_image_uris(scryfall_card: "ScryfallCard") -> tuple[str | None, str | None]:
         """Extract normal and back image URIs from card data."""
         image_uri = None
         back_image_uri = None
@@ -45,7 +45,7 @@ class Printing(models.Model):
         return image_uri, back_image_uri
 
     @staticmethod
-    def from_scryfall_card(card: Card, scryfall_card: ScryfallCard):
+    def from_scryfall_card(card: "Card", scryfall_card: "ScryfallCard"):
         image_uri, back_image_uri = Printing.get_image_uris(scryfall_card)
 
         return Printing(

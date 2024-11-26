@@ -1,5 +1,6 @@
 from database.models.scryfall_card import ScryfallCard
 from django.test import TestCase
+from services.export_strategy import filterCard
 from services.scryfall_exporter import ScryfallExporter
 
 
@@ -14,7 +15,7 @@ class TestCardProcessor(TestCase):
 
     def test_filter_should_filter_out_art_series(self):
         self.assertFalse(
-            self.exporter.filter(
+            filterCard(
                 {
                     **self.default_valid_card,
                     "layout": "normal",
@@ -22,7 +23,7 @@ class TestCardProcessor(TestCase):
             )
         )
         self.assertTrue(
-            self.exporter.filter(
+            filterCard(
                 {
                     **self.default_valid_card,
                     "layout": "token",
@@ -30,7 +31,7 @@ class TestCardProcessor(TestCase):
             )
         )
         self.assertTrue(
-            self.exporter.filter(
+            filterCard(
                 {
                     **self.default_valid_card,
                     "layout": "art_series",
@@ -39,10 +40,8 @@ class TestCardProcessor(TestCase):
         )
 
     def test_filter_should_filter_out_non_english(self):
-        self.assertFalse(
-            self.exporter.filter({**self.default_valid_card, "lang": "en"})
-        )
-        self.assertTrue(self.exporter.filter({**self.default_valid_card, "lang": None}))
+        self.assertFalse(filterCard({**self.default_valid_card, "lang": "en"}))
+        self.assertTrue(filterCard({**self.default_valid_card, "lang": None}))
         all_non_eng_langs = [
             "ar",
             "de",
@@ -63,13 +62,11 @@ class TestCardProcessor(TestCase):
         ]
 
         for lang in all_non_eng_langs:
-            self.assertTrue(
-                self.exporter.filter({**self.default_valid_card, "lang": lang})
-            )
+            self.assertTrue(filterCard({**self.default_valid_card, "lang": lang}))
 
     def test_filter_should_filter_out_non_paper_cards(self):
         self.assertTrue(
-            self.exporter.filter(
+            filterCard(
                 {
                     **self.default_valid_card,
                     "games": ["mtgo"],
@@ -77,7 +74,7 @@ class TestCardProcessor(TestCase):
             )
         )
         self.assertFalse(
-            self.exporter.filter(
+            filterCard(
                 {
                     **self.default_valid_card,
                     "games": ["paper"],
@@ -85,7 +82,7 @@ class TestCardProcessor(TestCase):
             )
         )
         self.assertFalse(
-            self.exporter.filter(
+            filterCard(
                 {
                     **self.default_valid_card,
                     "games": ["paper", "mtgo"],
