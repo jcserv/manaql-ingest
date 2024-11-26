@@ -1,12 +1,13 @@
 from database.models.scryfall_card import ScryfallCard
 from django.test import TestCase
-from services.export_strategy import filterCard
+from services.export_strategy import SequentialStrategy, filterCard
 from services.scryfall_exporter import ScryfallExporter
 
 
 class TestCardProcessor(TestCase):
     def setUp(self):
         self.exporter = ScryfallExporter()
+        self.strategy = SequentialStrategy()
         self.default_valid_card = {
             "lang": "en",
             "layout": "normal",
@@ -91,7 +92,7 @@ class TestCardProcessor(TestCase):
         )
 
     def test_process_cards_should_handle_empty_list(self):
-        self.exporter.process_cards([])
+        self.exporter.process_cards([], self.strategy)
         self.assertEqual(ScryfallCard.objects.count(), 0)
 
     def test_process_cards_should_handle_scryfall_card_object(self):
@@ -204,5 +205,5 @@ class TestCardProcessor(TestCase):
                 },
             },
         ]
-        self.exporter.process_cards(cards_data)
+        self.exporter.process_cards(cards_data, self.strategy)
         self.assertEqual(ScryfallCard.objects.count(), 1)
