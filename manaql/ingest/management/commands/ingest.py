@@ -4,7 +4,7 @@ from datetime import datetime
 from common.utils import get_artifact_file_path
 from django.core.management.base import BaseCommand
 from services.scryfall import ScryfallService
-from services.scryfall_exporter import ScryfallExporterService
+from services.scryfall_exporter import ScryfallExporter
 
 
 class Command(BaseCommand):
@@ -32,7 +32,7 @@ class Command(BaseCommand):
             cards_data = client.download_all_cards()
 
         self.stdout.write("Processing card data...")
-        exporter = ScryfallExporterService()
+        exporter = ScryfallExporter()
         exporter.process_cards(cards_data)
 
         # processor = CardProcessor()
