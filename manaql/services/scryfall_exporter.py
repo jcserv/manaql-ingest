@@ -1,10 +1,12 @@
 import multiprocessing as mp
+import os
 from abc import ABC, abstractmethod
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
+from database.models.scryfall_card import ScryfallCard
 from django.db import connections, transaction
 
 
@@ -178,8 +180,20 @@ class ParallelStrategy(ProcessingStrategy):
 class ScryfallExporter:
     """Service class for persisting Scryfall data to the database."""
 
-    def process_cards(
-        self, cards: List[Dict], strategy: ProcessingStrategy
-    ) -> ProcessingResult:
+    def __init__(self):
+        if os.getenv("PARALLEL_PROCESSING_ENABLED") == "true":
+            self.with_parallel_strategy()
+        else:
+            self.with_sequential_strategy()
+
+    def process_cards(self, cards: List[Dict]) -> ProcessingResult:
         """Process cards using the specified strategy."""
-        return strategy.process(cards)
+        print("Clearing scryfall_card database...")
+        ScryfallCard.objects.all().delete()
+        return self.strategy.process(cards)
+
+    def with_sequential_strategy(self) -> None:
+        self.strategy = SequentialStrategy()
+
+    def with_parallel_strategy(self) -> None:
+        self.strategy = ParallelStrategy()

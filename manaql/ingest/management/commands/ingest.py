@@ -1,15 +1,10 @@
 import json
-import os
 from datetime import datetime
 
 from common.utils import get_artifact_file_path
 from django.core.management.base import BaseCommand
 from services.scryfall import ScryfallService
-from services.scryfall_exporter import (
-    ParallelStrategy,
-    ScryfallExporter,
-    SequentialStrategy,
-)
+from services.scryfall_exporter import ScryfallExporter
 
 
 class Command(BaseCommand):
@@ -38,13 +33,8 @@ class Command(BaseCommand):
 
         print("Processing card data...")
 
-        if os.getenv("PARALLEL_PROCESSING_ENABLED") == "true":
-            strategy = ParallelStrategy()
-        else:
-            strategy = SequentialStrategy()
-
         exporter = ScryfallExporter()
-        result = exporter.process_cards(cards_data, strategy)
+        result = exporter.process_cards(cards_data)
         print(result)
 
         end_time = datetime.now()

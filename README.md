@@ -20,6 +20,10 @@ manaql-ingest is a Django application that ingests Scryfall card data into a Pos
 
 3. Run `make setup`
 4. Run `poetry install`
-5. Run `make download` to download the Scryfall data
-6. Run `make ingest` to ingest the Scryfall data into the database
-7. Run `make run` to process the Scryfall data into the card/printings tables
+5. Run `make dev-db` to start a local postgres database, then `make migrate`
+6. Run `make download` to download the Scryfall data
+7. Run `make ingest` to ingest the Scryfall data into the database
+8. Run `make process` to process the Scryfall data into the card/printings tables
+
+TODO:
+- async.io instead of tqdm?

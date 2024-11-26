@@ -15,8 +15,11 @@ download-dry-run:
 ingest:
 	@source scripts/set-env.sh && python3 manaql/manage.py ingest --file=all_cards.json
 
-run:
+process:
 	@source scripts/set-env.sh && python3 manaql/manage.py process
+
+run:
+	@source scripts/set-env.sh && python3 manaql/manage.py all
 
 migrations:
 	@source scripts/set-env.sh && python3 manaql/manage.py makemigrations database

@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import os
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -192,6 +193,18 @@ class ParallelStrategy(ProcessingStrategy):
 class CardProcessor:
     """Service class for processing card data from ScryfallCard table."""
 
-    def process_cards(self, strategy: ProcessingStrategy) -> ProcessingResult:
+    def __init__(self):
+        if os.getenv("PARALLEL_PROCESSING_ENABLED") == "true":
+            self.with_parallel_strategy()
+        else:
+            self.with_sequential_strategy()
+
+    def process_cards(self) -> ProcessingResult:
         """Process cards using the specified strategy."""
-        return strategy.process()
+        return self.strategy.process()
+
+    def with_sequential_strategy(self) -> None:
+        self.strategy = SequentialStrategy()
+
+    def with_parallel_strategy(self) -> None:
+        self.strategy = ParallelStrategy()

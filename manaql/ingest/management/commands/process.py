@@ -1,8 +1,7 @@
-import os
 from datetime import datetime
 
 from django.core.management.base import BaseCommand
-from services.card_processor import CardProcessor, ParallelStrategy, SequentialStrategy
+from services.card_processor import CardProcessor
 
 
 class Command(BaseCommand):
@@ -12,13 +11,8 @@ class Command(BaseCommand):
         start_time = datetime.now()
         print("Starting card data processing...")
 
-        if os.getenv("PARALLEL_PROCESSING_ENABLED") == "true":
-            strategy = ParallelStrategy()
-        else:
-            strategy = SequentialStrategy()
-
         processor = CardProcessor()
-        result = processor.process_cards(strategy)
+        result = processor.process_cards()
         print(result)
 
         end_time = datetime.now()
