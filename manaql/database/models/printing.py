@@ -8,7 +8,7 @@ from database.models.scryfall_card import ScryfallCard
 
 class Printing(models.Model):
     id = models.AutoField(primary_key=True)
-    card_id = models.ForeignKey("Card", on_delete=models.CASCADE)
+    card = models.ForeignKey("Card", on_delete=models.CASCADE)
     set_code = models.CharField(max_length=7, null=False, db_column="set")
     set_name = models.CharField(max_length=255, null=False)
     collector_number = models.CharField(max_length=31, null=False)
@@ -49,7 +49,7 @@ class Printing(models.Model):
         image_uri, back_image_uri = Printing.get_image_uris(scryfall_card)
 
         return Printing(
-            card_id=card,
+            card_id=card.id,
             set_code=scryfall_card.set_code,
             set_name=scryfall_card.set_name,
             collector_number=scryfall_card.collector_number,
