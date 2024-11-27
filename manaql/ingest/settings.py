@@ -1,20 +1,15 @@
-from pathlib import Path
+import dj_database_url
+import environ
 
-from ingest.config import Config
+env = environ.Env(
+    DEBUG=(bool, False),
+)
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 
-config = Config()
-try:
-    config.validate()
-except Exception as e:
-    print(e)
-    exit(1)
+SECRET_KEY = env("SECRET_KEY")
 
-SECRET_KEY = config.django_secret_key
-DEBUG = True
-
-ALLOWED_HOSTS = []  # [f"{config.fly_app_name}.fly.dev"]
+ALLOWED_HOSTS = [".fly.dev"]
+CSRF_TRUSTED_ORIGINS = ["https://*.fly.dev"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -57,16 +52,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "ingest.wsgi.application"
 
-
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": config.database,
-        "USER": config.user,
-        "PASSWORD": config.password,
-        "HOST": config.host,
-        "PORT": config.db_port,
-    }
+    "default": dj_database_url.config(default=env("DATABASE_URL"), conn_max_age=600)
+    # if config.environment == "production"
+    # else {
+    #     "ENGINE": "django.db.backends.postgresql_psycopg2",
+    #     "NAME": config.database,
+    #     "USER": config.user,
+    #     "PASSWORD": config.password,
+    #     "HOST": config.host,
+    #     "PORT": config.db_port,
+    # }
 }
 
 AUTH_PASSWORD_VALIDATORS = [
