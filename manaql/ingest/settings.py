@@ -54,15 +54,15 @@ WSGI_APPLICATION = "ingest.wsgi.application"
 
 DATABASES = {
     "default": dj_database_url.config(default=env("DATABASE_URL"), conn_max_age=600)
-    # if config.environment == "production"
-    # else {
-    #     "ENGINE": "django.db.backends.postgresql_psycopg2",
-    #     "NAME": config.database,
-    #     "USER": config.user,
-    #     "PASSWORD": config.password,
-    #     "HOST": config.host,
-    #     "PORT": config.db_port,
-    # }
+    if env("ENVIRONMENT") == "production"
+    else {
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "NAME": env("POSTGRES_DB"),
+        "USER": env("POSTGRES_USER"),
+        "PASSWORD": env("POSTGRES_PASSWORD"),
+        "HOST": env("POSTGRES_HOST"),
+        "PORT": env("POSTGRES_PORT"),
+    }
 }
 
 AUTH_PASSWORD_VALIDATORS = [
