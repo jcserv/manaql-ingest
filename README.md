@@ -27,3 +27,4 @@ manaql-ingest is a Django application that ingests Scryfall card data into a Pos
 
 TODO:
 - async.io instead of tqdm?
+- guesstimate eur_foil_etched price?
