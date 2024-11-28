@@ -21,12 +21,15 @@ class Command(BaseCommand):
                 command=MQLCommand.Download, message="Download in progress..."
             )
             exporter = ScryfallExporter()
+            exporter.with_parallel_strategy()
             result = exporter.process_cards(cards_iterator)
             RunLog.objects.create(
                 command=MQLCommand.Ingest, message=f"Ingestion complete.\n{result}"
             )
 
-        result = CardProcessor().process_cards()
+        processor = CardProcessor()
+        processor.with_parallel_strategy()
+        result = processor.process_cards()
         RunLog.objects.create(
             command=MQLCommand.Process, message=f"Processing complete.\n{result}"
         )

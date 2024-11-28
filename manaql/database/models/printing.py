@@ -58,7 +58,7 @@ class Printing(models.Model):
             price_usd_etched=scryfall_card.prices.get("usd_etched", ""),
             price_eur=scryfall_card.prices.get("eur", ""),
             price_eur_foil=scryfall_card.prices.get("eur_foil", ""),
-            price_eur_etched=None,  # TODO: Not provided by Scryfall, can guesstimate?
+            price_eur_etched=None,  # This will be computed in the API
         )
 
     class Meta:

@@ -53,6 +53,7 @@ class ScryfallService:
 
     def _create_card_iterator(self, file_path: Path) -> Iterator[Dict]:
         """Create an iterator over card objects from a file."""
+        print(f"Opening file for parsing: {file_path}")
 
         def generate_cards():
             if file_path.name.endswith(".gz"):
@@ -61,40 +62,13 @@ class ScryfallService:
                 file_obj = open(file_path, "rb")
 
             try:
-                parser = ijson.parse(file_obj)
-                current_card = {}
-                current_prefix = ""
-
-                for prefix, event, value in parser:
-                    if prefix == "" and event == "start_array":
-                        continue
-
-                    if event == "start_map":
-                        current_card = {}
-                        current_prefix = prefix
-                    elif event == "end_map":
-                        if current_prefix.count(".") == 0:  # Top-level object
-                            yield current_card
-                            current_card = {}
-                    elif event in ("string", "number", "boolean", "null"):
-                        # Handle nested objects by checking prefix depth
-                        parts = prefix.split(".")
-                        target = current_card
-
-                        # Navigate to the correct nested level
-                        for part in parts[:-1]:
-                            if part.isdigit():  # Handle arrays
-                                continue
-                            if part not in target:
-                                target[part] = {} if not parts[-1].isdigit() else []
-                            target = target[part]
-
-                        # Set the value
-                        key = parts[-1]
-                        if key.isdigit():  # Handle array items
-                            target.append(value)
-                        else:
-                            target[key] = value
+                cards = ijson.items(file_obj, "item")
+                count = 0
+                for card in cards:
+                    count += 1
+                    if count % 1000 == 0:
+                        print(f"Parsed {count} cards...")
+                    yield card
             finally:
                 file_obj.close()
 
@@ -102,28 +76,25 @@ class ScryfallService:
 
     @contextmanager
     def stream_all_cards(self) -> Iterator[Dict]:
-        """
-        Stream and parse Scryfall bulk data with minimal memory usage.
-
-        Usage:
-            with scryfall_service.stream_all_cards() as cards:
-                for card in cards:
-                    process_card(card)
-        """
+        """Stream and parse Scryfall bulk data with minimal memory usage."""
         temp_dir = tempfile.TemporaryDirectory()
         try:
-            # Get the download URL and expected file size
             download_url, expected_size = self._get_bulk_data_url()
 
-            # Parse the filename from the URL
             filename = os.path.basename(urlparse(download_url).path)
             local_path = Path(temp_dir.name) / filename
 
-            # Download the file
             self._download_file(download_url, local_path, expected_size)
 
-            # Create and yield the iterator
             yield self._create_card_iterator(local_path)
 
         finally:
             temp_dir.cleanup()
+
+    def download_all_cards(self) -> list:
+        """Legacy method that downloads all cards into memory."""
+        cards = []
+        with self.stream_all_cards() as card_stream:
+            for card in card_stream:
+                cards.append(card)
+        return cards

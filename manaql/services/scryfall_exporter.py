@@ -74,19 +74,38 @@ class ProcessingStrategy(ABC):
 class SequentialStrategy(ProcessingStrategy):
     """Process cards sequentially."""
 
-    def process(self, cards: List[Dict]) -> ProcessingResult:
+    def process(self, cards: Iterator[Dict] | List[Dict]) -> ProcessingResult:
         start_time = datetime.now()
         result = ProcessingResult()
+        total_processed = 0
 
+        print("Starting sequential processing...")
         with transaction.atomic():
             card_objects = []
             for card in cards:
+                total_processed += 1
+                if total_processed % 1000 == 0:
+                    print(f"Processed {total_processed} cards...")
+
                 if filterCard(card):
                     result.filtered_count += 1
                     continue
                 card_objects.append(ScryfallCard.from_scryfall_card(card))
-            ScryfallCard.objects.bulk_create(card_objects)
-            result.success_count = len(card_objects)
+
+                if len(card_objects) >= 1000:
+                    print(f"Bulk creating {len(card_objects)} cards...")
+                    ScryfallCard.objects.bulk_create(card_objects)
+                    result.success_count += len(card_objects)
+                    card_objects = []
+
+            if card_objects:
+                print(f"Bulk creating final {len(card_objects)} cards...")
+                ScryfallCard.objects.bulk_create(card_objects)
+                result.success_count += len(card_objects)
+
+        print(f"Total cards processed: {total_processed}")
+        print(f"Success: {result.success_count}")
+        print(f"Filtered: {result.filtered_count}")
 
         result.processing_time = (datetime.now() - start_time).total_seconds()
         return result
@@ -98,6 +117,7 @@ class ParallelStrategy(ProcessingStrategy):
     def __init__(self, batch_size: int = 1000, max_workers: Optional[int] = None):
         super().__init__(batch_size)
         self.max_workers = min(max_workers or mp.cpu_count(), 4)
+        print(f"Initializing ParallelStrategy with {self.max_workers} workers")
 
     @staticmethod
     def _process_batch(batch: List[Dict]) -> Tuple[int, int, List[Dict]]:
@@ -115,62 +135,57 @@ class ParallelStrategy(ProcessingStrategy):
                         continue
                     card_objects.append(ScryfallCard.from_scryfall_card(card))
 
-                ScryfallCard.objects.bulk_create(card_objects, batch_size=1000)
+                if card_objects:
+                    ScryfallCard.objects.bulk_create(card_objects, batch_size=1000)
                 success = len(card_objects)
+        except Exception as e:
+            print(f"Batch processing failed: {e}")
+            raise
         finally:
-            # Clean up references
             del card_objects
             gc.collect()
 
         return success, filtered, failed
 
-    def process(self, cards: Iterator[Dict]) -> ProcessingResult:
+    def process(self, cards: Iterator[Dict] | List[Dict]) -> ProcessingResult:
+        """Process cards from either an iterator or a list."""
         start_time = datetime.now()
         result = ProcessingResult()
 
-        # Process cards in batches using a generator approach
+        # Convert iterator to list if needed
+        if isinstance(cards, Iterator):
+            cards_list = list(cards)
+        else:
+            cards_list = cards
+
+        print(f"Processing {len(cards_list)} total cards")
+
         with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
-            # Create a queue to store futures
+            batches = [
+                cards_list[i : i + self.batch_size]
+                for i in range(0, len(cards_list), self.batch_size)
+            ]
+
+            print(f"Created {len(batches)} batches")
             futures = []
-            current_batch = []
 
-            for card in cards:
-                current_batch.append(card)
+            for batch in batches:
+                futures.append(executor.submit(self._process_batch, batch))
 
-                if len(current_batch) >= self.batch_size:
-                    # Submit the batch for processing
-                    futures.append(executor.submit(self._process_batch, current_batch))
-                    current_batch = []
-
-                    # Process completed futures if we have enough
-                    if len(futures) >= self.max_workers * 2:
-                        self._process_completed_futures(futures, result)
-                        futures = []
-
-            # Process any remaining cards in the last batch
-            if current_batch:
-                futures.append(executor.submit(self._process_batch, current_batch))
-
-            # Process any remaining futures
-            self._process_completed_futures(futures, result)
+            for future in as_completed(futures):
+                try:
+                    success, filtered, failed = future.result()
+                    result.success_count += success
+                    result.filtered_count += filtered
+                    result.failed_cards.extend(failed)
+                    print(f"Batch complete - Success: {success}, Filtered: {filtered}")
+                except Exception as e:
+                    print(f"Future processing failed: {e}")
+                finally:
+                    del future
 
         result.processing_time = (datetime.now() - start_time).total_seconds()
         return result
-
-    def _process_completed_futures(
-        self, futures: List, result: ProcessingResult
-    ) -> None:
-        """Process completed futures and update results"""
-        for future in as_completed(futures):
-            try:
-                success, filtered, failed = future.result()
-                result.success_count += success
-                result.filtered_count += filtered
-                result.failed_cards.extend(failed)
-            except Exception as e:
-                print(f"Batch processing failed with exception: {e}")
-            finally:
-                del future
 
 
 class ScryfallExporter:

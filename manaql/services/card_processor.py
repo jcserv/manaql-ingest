@@ -60,7 +60,6 @@ class SequentialStrategy(ProcessingStrategy):
         print("Processing cards sequentially...")
         scryfall_cards = ScryfallCard.objects.all()
 
-        # First pass: Create all unique cards
         cards = []
         for scryfall_card in scryfall_cards:
             if scryfall_card.name not in processed_names:
@@ -69,10 +68,8 @@ class SequentialStrategy(ProcessingStrategy):
 
         Card.objects.bulk_create(cards)
 
-        # Pre-fetch all cards for the second pass
         cards_by_name = {card.name: card for card in Card.objects.all()}
 
-        # Second pass: Create all printings
         printings = []
         for scryfall_card in scryfall_cards:
             card = cards_by_name.get(scryfall_card.name)
@@ -113,7 +110,6 @@ class ParallelStrategy(ProcessingStrategy):
         """Process a batch of printings."""
         failed_printings = []
 
-        # Pre-fetch cards needed for this batch
         card_names = {sc.name for sc in scryfall_cards}
         cards_by_name = {
             card.name: card for card in Card.objects.filter(name__in=card_names)
@@ -135,7 +131,6 @@ class ParallelStrategy(ProcessingStrategy):
         start_time = datetime.now()
         result = ProcessingResult()
 
-        # First, create all cards in a single transaction
         print("Creating all unique cards...")
         scryfall_cards = list(ScryfallCard.objects.all())
 
@@ -143,7 +138,6 @@ class ParallelStrategy(ProcessingStrategy):
             processed_names = self._create_cards(scryfall_cards)
             result.cards_created = len(processed_names)
 
-        # Then process printings in parallel batches
         print("Processing printings in parallel...")
         batches = [
             scryfall_cards[i : i + self.batch_size]
