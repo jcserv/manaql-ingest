@@ -109,9 +109,6 @@ class ParallelStrategy(ProcessingStrategy):
     @staticmethod
     def _process_batch(batch: List[Dict]) -> Tuple[int, int, List[Dict]]:
         """Process a batch of cards in a separate process."""
-        import django
-
-        django.setup()
         connections.close_all()
 
         success = 0

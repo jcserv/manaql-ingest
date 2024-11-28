@@ -18,7 +18,7 @@ class ScryfallCard(models.Model):
     card_faces = models.JSONField(null=True)
 
     @staticmethod
-    def from_scryfall_card(scryfall_card: Dict) -> "ScryfallCard":
+    def from_scryfall_card(scryfall_card: Dict):
         return ScryfallCard(
             name=scryfall_card.get("name", None),
             lang=scryfall_card.get("lang", None),

@@ -2,9 +2,6 @@ from common.finish import Finish, get_finishes
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
-from database.models.card import Card
-from database.models.scryfall_card import ScryfallCard
-
 
 class Printing(models.Model):
     id = models.AutoField(primary_key=True)
@@ -25,7 +22,7 @@ class Printing(models.Model):
     price_eur_etched = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 
     @staticmethod
-    def get_image_uris(scryfall_card: "ScryfallCard") -> tuple[str | None, str | None]:
+    def get_image_uris(scryfall_card) -> tuple[str | None, str | None]:
         """Extract normal and back image URIs from card data."""
         image_uri = None
         back_image_uri = None
@@ -45,11 +42,11 @@ class Printing(models.Model):
         return image_uri, back_image_uri
 
     @staticmethod
-    def from_scryfall_card(card: "Card", scryfall_card: "ScryfallCard"):
+    def from_scryfall_card(card_id: int, scryfall_card):
         image_uri, back_image_uri = Printing.get_image_uris(scryfall_card)
 
         return Printing(
-            card_id=card.id,
+            card_id=card_id,
             set_code=scryfall_card.set_code,
             set_name=scryfall_card.set_name,
             collector_number=scryfall_card.collector_number,

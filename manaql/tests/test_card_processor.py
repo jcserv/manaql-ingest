@@ -61,6 +61,7 @@ class TestCardProcessor(TestCase):
             },
         )
         s2.save()
-        self.processor.process_cards(self.strategy)
+        result = self.processor.process_cards()
+        print(result)
         self.assertEqual(Card.objects.count(), 1)
         self.assertEqual(Printing.objects.count(), 2)

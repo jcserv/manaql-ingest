@@ -84,7 +84,7 @@ class SequentialStrategy(ProcessingStrategy):
         for scryfall_card in scryfall_cards:
             try:
                 card = cards_by_name.get(scryfall_card.name)
-                printing = Printing.from_scryfall_card(card, scryfall_card)
+                printing = Printing.from_scryfall_card(card.id, scryfall_card)
                 printing.save()
                 result.printings_created += 1
             except Exception as e:
@@ -137,7 +137,7 @@ class ParallelStrategy(ProcessingStrategy):
                 continue
 
             try:
-                printing = Printing.from_scryfall_card(card, scryfall_card)
+                printing = Printing.from_scryfall_card(card.id, scryfall_card)
                 printing.save()
                 printings_created += 1
             except Exception as e:
