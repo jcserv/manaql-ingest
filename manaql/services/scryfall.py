@@ -37,14 +37,15 @@ class ScryfallService:
 
     def _download_file(self, url: str, local_path: Path, expected_size: int) -> None:
         """Download a file in chunks while showing progress."""
+        head_response = self.session.head(url)
+        actual_size = int(head_response.headers.get("Content-Length", expected_size))
+
         response = self.session.get(url, stream=True)
         response.raise_for_status()
 
-        print(
-            f"Downloading Scryfall bulk data ({expected_size / (1024*1024):.1f} MB)..."
-        )
+        print("Downloading Scryfall bulk data")
 
-        with tqdm(total=expected_size, unit="B", unit_scale=True) as pbar:
+        with tqdm(total=actual_size, unit="B", unit_scale=True) as pbar:
             with open(local_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
@@ -66,8 +67,6 @@ class ScryfallService:
                 count = 0
                 for card in cards:
                     count += 1
-                    if count % 1000 == 0:
-                        print(f"Parsed {count} cards...")
                     yield card
             finally:
                 file_obj.close()

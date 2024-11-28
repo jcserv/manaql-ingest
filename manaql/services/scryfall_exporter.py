@@ -178,7 +178,6 @@ class ParallelStrategy(ProcessingStrategy):
                     result.success_count += success
                     result.filtered_count += filtered
                     result.failed_cards.extend(failed)
-                    print(f"Batch complete - Success: {success}, Filtered: {filtered}")
                 except Exception as e:
                     print(f"Future processing failed: {e}")
                 finally:
