@@ -10,6 +10,7 @@ from database.models.card import Card
 from database.models.printing import Printing
 from database.models.scryfall_card import ScryfallCard
 from django.db import transaction
+from tqdm import tqdm
 
 
 @dataclass
@@ -55,11 +56,6 @@ class SequentialStrategy(ProcessingStrategy):
         start_time = datetime.now()
         result = ProcessingResult()
         processed_names = set()
-
-        print("Clearing existing data...")
-        with transaction.atomic():
-            Printing.objects.all().delete()
-            Card.objects.all().delete()
 
         print("Processing cards sequentially...")
         scryfall_cards = ScryfallCard.objects.all()
@@ -150,11 +146,6 @@ class ParallelStrategy(ProcessingStrategy):
         start_time = datetime.now()
         result = ProcessingResult()
 
-        print("Clearing existing data...")
-        with transaction.atomic():
-            Printing.objects.all().delete()
-            Card.objects.all().delete()
-
         # First, create all cards in a single transaction
         print("Creating all unique cards...")
         scryfall_cards = list(ScryfallCard.objects.all())
@@ -176,15 +167,15 @@ class ParallelStrategy(ProcessingStrategy):
                 for batch in batches
             }
 
-            for future in as_completed(future_to_batch):
-                try:
-                    failed_printings, printings_created = future.result()
-                    result.printings_created += printings_created
-                    result.failed_printings.extend(failed_printings)
-
-                    print(f"Processed batch: {printings_created} printings")
-                except Exception as e:
-                    print(f"Batch processing failed with error: {e}")
+            with tqdm(total=len(batches), desc="Processing batches") as pbar:
+                for future in as_completed(future_to_batch):
+                    try:
+                        failed_printings, printings_created = future.result()
+                        result.printings_created += printings_created
+                        result.failed_printings.extend(failed_printings)
+                    except Exception as e:
+                        print(f"Batch processing failed with error: {e}")
+                    pbar.update(1)
 
         result.processing_time = (datetime.now() - start_time).total_seconds()
         return result
@@ -201,6 +192,11 @@ class CardProcessor:
 
     def process_cards(self) -> ProcessingResult:
         """Process cards using the specified strategy."""
+        print("Clearing card/printing databases...")
+        with transaction.atomic():
+            Printing.objects.all().delete()
+            Card.objects.all().delete()
+
         return self.strategy.process()
 
     def with_sequential_strategy(self) -> None:

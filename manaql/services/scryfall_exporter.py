@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple
 
 from database.models.scryfall_card import ScryfallCard
 from django.db import connections, transaction
+from tqdm import tqdm
 
 
 def filterCard(scryfall_card: Dict) -> bool:
@@ -22,9 +23,6 @@ def filterCard(scryfall_card: Dict) -> bool:
 
 def process_card(card: Dict) -> Tuple[bool, bool, Optional[Dict]]:
     """Process a single card and return success, filtered, and failure info."""
-    # Import here to avoid circular dependency
-    from database.models.scryfall_card import ScryfallCard
-
     if filterCard(card):
         return False, True, None
 
@@ -77,15 +75,10 @@ class SequentialStrategy(ProcessingStrategy):
     """Process cards sequentially."""
 
     def process(self, cards: List[Dict]) -> ProcessingResult:
-        from database.models.scryfall_card import ScryfallCard
-        from tqdm import tqdm
-
         start_time = datetime.now()
         result = ProcessingResult()
 
         with transaction.atomic():
-            ScryfallCard.objects.all().delete()
-
             for card in tqdm(cards, desc="Processing cards sequentially"):
                 success, filtered, failed_card = process_card(card)
                 if success:
@@ -134,15 +127,8 @@ class ParallelStrategy(ProcessingStrategy):
         ]
 
     def process(self, cards: List[Dict]) -> ProcessingResult:
-        from database.models.scryfall_card import ScryfallCard
-        from tqdm import tqdm
-
         start_time = datetime.now()
         result = ProcessingResult()
-
-        # Clear existing data
-        with transaction.atomic():
-            ScryfallCard.objects.all().delete()
 
         # Split data into batches
         batches = self._chunk_data(cards)
