@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for manaql-ingest on 2024-11-26T19:00:01-05:00
+# fly.toml app configuration file generated for manaql-ingest on 2024-11-28T13:15:26-05:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -10,14 +10,14 @@ console_command = '/code/manage.py shell'
 [build]
 
 [deploy]
-  release_command = 'python manage.py migrate --noinput'
+  release_command = 'python manage.py migrate database --noinput'
 
 [env]
   PORT = '8000'
 
 [[vm]]
-  memory = '3gb'
-  cpu_kind = 'performance-1x'
+  memory = '16gb'
+  size = 'performance'
   cpus = 1
 
 [[statics]]

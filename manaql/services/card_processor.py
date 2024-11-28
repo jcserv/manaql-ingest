@@ -173,6 +173,8 @@ class ParallelStrategy(ProcessingStrategy):
 class CardProcessor:
     """Service class for processing card data from ScryfallCard table."""
 
+    _db_cleared = False
+
     def __init__(self):
         if os.getenv("PARALLEL_PROCESSING_ENABLED") == "true":
             self.with_parallel_strategy()
@@ -181,11 +183,8 @@ class CardProcessor:
 
     def process_cards(self) -> ProcessingResult:
         """Process cards using the specified strategy."""
-        print("Clearing card/printing databases...")
-        with transaction.atomic():
-            Printing.objects.all().delete()
-            Card.objects.all().delete()
 
+        self._clear_database_once()
         return self.strategy.process()
 
     def with_sequential_strategy(self) -> None:
@@ -193,3 +192,13 @@ class CardProcessor:
 
     def with_parallel_strategy(self) -> None:
         self.strategy = ParallelStrategy()
+
+    @classmethod
+    def _clear_database_once(cls) -> None:
+        """Clear the database only on the first execution."""
+        if not cls._db_cleared:
+            print("Clearing card/printing databases...")
+            with transaction.atomic():
+                Printing.objects.all().delete()
+                Card.objects.all().delete()
+            cls._db_cleared = True

@@ -16,14 +16,15 @@ class Command(BaseCommand):
 
         RunLog.objects.create(command=MQLCommand.All, message="Starting command...")
         client = ScryfallService("manaql-ingest", "0.1.0")
-        cards_data = client.download_all_cards()
-
-        RunLog.objects.create(command=MQLCommand.Download, message="Download complete.")
-        exporter = ScryfallExporter()
-        result = exporter.process_cards(cards_data)
-        RunLog.objects.create(
-            command=MQLCommand.Ingest, message=f"Ingestion complete.\n{result}"
-        )
+        with client.stream_all_cards() as cards_iterator:
+            RunLog.objects.create(
+                command=MQLCommand.Download, message="Download in progress..."
+            )
+            exporter = ScryfallExporter()
+            result = exporter.process_cards(cards_iterator)
+            RunLog.objects.create(
+                command=MQLCommand.Ingest, message=f"Ingestion complete.\n{result}"
+            )
 
         result = CardProcessor().process_cards()
         RunLog.objects.create(
