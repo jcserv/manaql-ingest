@@ -12,6 +12,8 @@ from database.models.scryfall_card import ScryfallCard
 from django.db import transaction
 from tqdm import tqdm
 
+from .db_retry import with_retry  # Import the retry decorator
+
 
 @dataclass
 class ProcessingResult:
@@ -52,33 +54,36 @@ class ProcessingStrategy(ABC):
 class SequentialStrategy(ProcessingStrategy):
     """Process cards sequentially."""
 
+    @with_retry(max_retries=3)
     def process(self) -> ProcessingResult:
         start_time = datetime.now()
         result = ProcessingResult()
         processed_names = set()
 
         print("Processing cards sequentially...")
-        scryfall_cards = ScryfallCard.objects.all()
+        scryfall_cards = list(ScryfallCard.objects.all())
 
-        cards = []
-        for scryfall_card in scryfall_cards:
-            if scryfall_card.name not in processed_names:
-                cards.append(Card.from_scryfall_card(scryfall_card))
-                processed_names.add(scryfall_card.name)
+        with transaction.atomic():
+            cards = []
+            for scryfall_card in scryfall_cards:
+                if scryfall_card.name not in processed_names:
+                    cards.append(Card.from_scryfall_card(scryfall_card))
+                    processed_names.add(scryfall_card.name)
 
-        Card.objects.bulk_create(cards)
+            Card.objects.bulk_create(cards, batch_size=100)
 
-        cards_by_name = {card.name: card for card in Card.objects.all()}
+            cards_by_name = {card.name: card for card in Card.objects.all()}
 
-        printings = []
-        for scryfall_card in scryfall_cards:
-            card = cards_by_name.get(scryfall_card.name)
-            if not card:
-                result.failed_printings.append(scryfall_card.name)
-                continue
-            printings.append(Printing.from_scryfall_card(card.id, scryfall_card))
+            printings = []
+            for scryfall_card in scryfall_cards:
+                card = cards_by_name.get(scryfall_card.name)
+                if not card:
+                    result.failed_printings.append(scryfall_card.name)
+                    continue
+                printings.append(Printing.from_scryfall_card(card.id, scryfall_card))
 
-        Printing.objects.bulk_create(printings)
+            # Use smaller batch size for bulk create
+            Printing.objects.bulk_create(printings, batch_size=100)
 
         result.processing_time = (datetime.now() - start_time).total_seconds()
         return result
@@ -87,10 +92,13 @@ class SequentialStrategy(ProcessingStrategy):
 class ParallelStrategy(ProcessingStrategy):
     """Process cards in parallel using thread pools."""
 
-    def __init__(self, batch_size: int = 1000, max_workers: Optional[int] = None):
+    def __init__(self, batch_size: int = 500, max_workers: Optional[int] = None):
         self.batch_size = batch_size
-        self.max_workers = max_workers or (mp.cpu_count() * 2)
+        self.max_workers = max_workers or min(
+            mp.cpu_count() * 2, 8
+        )  # Limit max workers
 
+    @with_retry(max_retries=3)
     def _create_cards(self, scryfall_cards: List[ScryfallCard]) -> Set[str]:
         """Create all unique cards and return set of processed names."""
         processed_names = set()
@@ -101,31 +109,35 @@ class ParallelStrategy(ProcessingStrategy):
                 cards.append(Card.from_scryfall_card(scryfall_card))
                 processed_names.add(scryfall_card.name)
 
-        Card.objects.bulk_create(cards)
+        # Use smaller batch size for bulk create
+        Card.objects.bulk_create(cards, batch_size=100)
         return processed_names
 
+    @with_retry(max_retries=3)
     def _process_printing_batch(
         self, scryfall_cards: List[ScryfallCard]
     ) -> tuple[List[str], int]:
         """Process a batch of printings."""
         failed_printings = []
 
-        card_names = {sc.name for sc in scryfall_cards}
-        cards_by_name = {
-            card.name: card for card in Card.objects.filter(name__in=card_names)
-        }
+        with transaction.atomic():
+            card_names = {sc.name for sc in scryfall_cards}
+            cards_by_name = {
+                card.name: card for card in Card.objects.filter(name__in=card_names)
+            }
 
-        printings = []
-        for scryfall_card in scryfall_cards:
-            card = cards_by_name.get(scryfall_card.name)
-            if not card:
-                failed_printings.append(scryfall_card.name)
-                continue
+            printings = []
+            for scryfall_card in scryfall_cards:
+                card = cards_by_name.get(scryfall_card.name)
+                if not card:
+                    failed_printings.append(scryfall_card.name)
+                    continue
 
-            printings.append(Printing.from_scryfall_card(card.id, scryfall_card))
+                printings.append(Printing.from_scryfall_card(card.id, scryfall_card))
 
-        Printing.objects.bulk_create(printings)
-        return failed_printings, len(printings)
+            # Use smaller batch size for bulk create
+            Printing.objects.bulk_create(printings, batch_size=100)
+            return failed_printings, len(printings)
 
     def process(self) -> ProcessingResult:
         start_time = datetime.now()
@@ -175,9 +187,9 @@ class CardProcessor:
         else:
             self.with_sequential_strategy()
 
+    @with_retry(max_retries=3)
     def process_cards(self) -> ProcessingResult:
         """Process cards using the specified strategy."""
-
         self._clear_database_once()
         return self.strategy.process()
 
@@ -188,6 +200,7 @@ class CardProcessor:
         self.strategy = ParallelStrategy()
 
     @classmethod
+    @with_retry(max_retries=3)
     def _clear_database_once(cls) -> None:
         """Clear the database only on the first execution."""
         if not cls._db_cleared:
