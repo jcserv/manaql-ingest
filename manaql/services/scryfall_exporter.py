@@ -84,22 +84,17 @@ class SequentialStrategy(ProcessingStrategy):
             card_objects = []
             for card in cards:
                 total_processed += 1
-                if total_processed % 1000 == 0:
-                    print(f"Processed {total_processed} cards...")
-
                 if filterCard(card):
                     result.filtered_count += 1
                     continue
                 card_objects.append(ScryfallCard.from_scryfall_card(card))
 
                 if len(card_objects) >= 1000:
-                    print(f"Bulk creating {len(card_objects)} cards...")
                     ScryfallCard.objects.bulk_create(card_objects)
                     result.success_count += len(card_objects)
                     card_objects = []
 
             if card_objects:
-                print(f"Bulk creating final {len(card_objects)} cards...")
                 ScryfallCard.objects.bulk_create(card_objects)
                 result.success_count += len(card_objects)
 
