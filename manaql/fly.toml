@@ -16,8 +16,8 @@ console_command = '/code/manage.py shell'
   PORT = '8000'
 
 [[vm]]
-  memory = '1gb'
-  cpu_kind = 'shared'
+  memory = '3gb'
+  cpu_kind = 'performance-1x'
   cpus = 1
 
 [[statics]]
