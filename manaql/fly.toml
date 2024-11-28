@@ -16,7 +16,7 @@ console_command = '/code/manage.py shell'
   PORT = '8000'
 
 [[vm]]
-  memory = '16gb'
+  memory = '4gb'
   size = 'performance'
   cpus = 1
 
