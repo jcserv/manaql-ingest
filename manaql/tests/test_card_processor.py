@@ -2,13 +2,13 @@ from database.models.card import Card
 from database.models.printing import Printing
 from database.models.scryfall_card import ScryfallCard
 from django.test import TestCase
-from services.card_processor import CardProcessor, SequentialStrategy
+from services.card_processor import CardProcessor
 
 
 class TestCardProcessor(TestCase):
     def setUp(self):
         self.processor = CardProcessor()
-        self.strategy = SequentialStrategy()
+        self.processor.with_sequential_strategy()
 
     def test_process_cards_should_handle_multiple_printings(self):
         s1 = ScryfallCard(
