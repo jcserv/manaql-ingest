@@ -1,112 +1,99 @@
-import json
-import time
-from typing import Any, Dict, List, Optional
+import gzip
+import os
+import tempfile
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Dict, Iterator
+from urllib.parse import urlparse
 
+import ijson
 import requests
-from common.bulk_data import BulkData
+from tqdm import tqdm
 
 
 class ScryfallService:
-    BASE_URL = "https://api.scryfall.com"
+    """Service for interacting with Scryfall API with memory-efficient streaming support."""
 
-    def __init__(self, app_name: str, version: str):
-        """
-        Initialize the Scryfall client.
+    BULK_DATA_URL = "https://api.scryfall.com/bulk-data"
 
-        Args:
-            app_name: The name of your application
-            version: The version of your application
-        """
+    def __init__(self, app_name: str, app_version: str):
         self.session = requests.Session()
         self.session.headers.update(
-            {"User-Agent": f"{app_name}/{version}", "Accept": "application/json"}
+            {
+                "User-Agent": f"{app_name}/{app_version}",
+            }
         )
-        self.last_request_time = 0
 
-    def _enforce_rate_limit(self):
-        """Enforce rate limiting by adding delay between requests."""
-        current_time = time.time()
-        time_since_last = current_time - self.last_request_time
-
-        if time_since_last < 0.1:
-            sleep_time = 0.1 - time_since_last
-            time.sleep(sleep_time)
-
-        self.last_request_time = time.time()
-
-    def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
-        """
-        Make a rate-limited request to the Scryfall API.
-
-        Args:
-            method: HTTP method to use
-            endpoint: API endpoint to call
-            **kwargs: Additional arguments to pass to requests
-
-        Returns:
-            Parsed JSON response
-        """
-        self._enforce_rate_limit()
-
-        url = f"{self.BASE_URL}/{endpoint.lstrip('/')}"
-        response = self.session.request(method, url, **kwargs)
-
-        if response.status_code == 429:
-            raise Exception("Rate limit exceeded. Please reduce request frequency.")
-
-        response.raise_for_status()
-        return response.json()
-
-    def get_bulk_data(self) -> List[BulkData]:
-        """
-        Get the list of all available bulk data downloads.
-
-        Returns:
-            List of BulkData objects
-        """
-        response = self._make_request("GET", "/bulk-data")
-        return [
-            BulkData(
-                id=item["id"],
-                type=item["type"],
-                updated_at=item["updated_at"],
-                uri=item["uri"],
-                name=item["name"],
-                description=item["description"],
-                size=item["size"],
-                download_uri=item["download_uri"],
-                content_type=item["content_type"],
-                content_encoding=item["content_encoding"],
-            )
-            for item in response["data"]
-        ]
-
-    def download_all_cards(
-        self, save_path: Optional[str] = None, dry_run: bool = False
-    ) -> List[Dict]:
-        """
-        Download and optionally save the all cards bulk data.
-
-        Args:
-            save_path: Optional path to save the JSON data to a file
-
-        Returns:
-            List of card objects from the bulk data
-        """
-        bulk_data = self.get_bulk_data()
-        all_cards_data = next(item for item in bulk_data if item.type == "all_cards")
-
-        print(f"Downloading {all_cards_data.size / 1024 / 1024:.1f} MB of card data...")
-        response = requests.get(all_cards_data.download_uri)
+    def _get_bulk_data_url(self) -> tuple[str, int]:
+        """Get the download URL and size for the latest bulk data."""
+        response = self.session.get(self.BULK_DATA_URL)
         response.raise_for_status()
 
-        cards: List[Dict] = response.json()
-        print("Download complete.")
-        if dry_run:
-            print("Dry run detected, not saving data.")
-        if not dry_run and save_path:
-            print(f"Saving data to {save_path}...")
-            with open(save_path, "w", encoding="utf-8") as f:
-                json.dump(cards, f, indent=2)
+        for item in response.json()["data"]:
+            if item["type"] == "default_cards":
+                return item["download_uri"], item["size"]
 
+        raise ValueError("Could not find default cards bulk data")
+
+    def _download_file(self, url: str, local_path: Path, expected_size: int) -> None:
+        """Download a file in chunks while showing progress."""
+        head_response = self.session.head(url)
+        actual_size = int(head_response.headers.get("Content-Length", expected_size))
+
+        response = self.session.get(url, stream=True)
+        response.raise_for_status()
+
+        print("Downloading Scryfall bulk data")
+
+        with tqdm(total=actual_size, unit="B", unit_scale=True) as pbar:
+            with open(local_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        pbar.update(len(chunk))
+
+    def _create_card_iterator(self, file_path: Path) -> Iterator[Dict]:
+        """Create an iterator over card objects from a file."""
+        print(f"Opening file for parsing: {file_path}")
+
+        def generate_cards():
+            if file_path.name.endswith(".gz"):
+                file_obj = gzip.open(file_path, "rb")
+            else:
+                file_obj = open(file_path, "rb")
+
+            try:
+                cards = ijson.items(file_obj, "item")
+                count = 0
+                for card in cards:
+                    count += 1
+                    yield card
+            finally:
+                file_obj.close()
+
+        return generate_cards()
+
+    @contextmanager
+    def stream_all_cards(self) -> Iterator[Dict]:
+        """Stream and parse Scryfall bulk data with minimal memory usage."""
+        temp_dir = tempfile.TemporaryDirectory()
+        try:
+            download_url, expected_size = self._get_bulk_data_url()
+
+            filename = os.path.basename(urlparse(download_url).path)
+            local_path = Path(temp_dir.name) / filename
+
+            self._download_file(download_url, local_path, expected_size)
+
+            yield self._create_card_iterator(local_path)
+
+        finally:
+            temp_dir.cleanup()
+
+    def download_all_cards(self) -> list:
+        """Legacy method that downloads all cards into memory."""
+        cards = []
+        with self.stream_all_cards() as card_stream:
+            for card in card_stream:
+                cards.append(card)
         return cards

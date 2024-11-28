@@ -1,14 +1,14 @@
+import gc
 import multiprocessing as mp
 import os
 from abc import ABC, abstractmethod
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 from database.models.scryfall_card import ScryfallCard
 from django.db import connections, transaction
-from tqdm import tqdm
 
 
 def filterCard(scryfall_card: Dict) -> bool:
@@ -74,86 +74,114 @@ class ProcessingStrategy(ABC):
 class SequentialStrategy(ProcessingStrategy):
     """Process cards sequentially."""
 
-    def process(self, cards: List[Dict]) -> ProcessingResult:
+    def process(self, cards: Iterator[Dict] | List[Dict]) -> ProcessingResult:
         start_time = datetime.now()
         result = ProcessingResult()
+        total_processed = 0
 
+        print("Starting sequential processing...")
         with transaction.atomic():
             card_objects = []
             for card in cards:
+                total_processed += 1
+                if total_processed % 1000 == 0:
+                    print(f"Processed {total_processed} cards...")
+
                 if filterCard(card):
                     result.filtered_count += 1
                     continue
                 card_objects.append(ScryfallCard.from_scryfall_card(card))
-            ScryfallCard.objects.bulk_create(card_objects)
-            result.success_count = len(card_objects)
+
+                if len(card_objects) >= 1000:
+                    print(f"Bulk creating {len(card_objects)} cards...")
+                    ScryfallCard.objects.bulk_create(card_objects)
+                    result.success_count += len(card_objects)
+                    card_objects = []
+
+            if card_objects:
+                print(f"Bulk creating final {len(card_objects)} cards...")
+                ScryfallCard.objects.bulk_create(card_objects)
+                result.success_count += len(card_objects)
+
+        print(f"Total cards processed: {total_processed}")
+        print(f"Success: {result.success_count}")
+        print(f"Filtered: {result.filtered_count}")
 
         result.processing_time = (datetime.now() - start_time).total_seconds()
         return result
 
 
 class ParallelStrategy(ProcessingStrategy):
-    """Parallel processing strategy."""
+    """Memory-optimized parallel processing strategy."""
 
     def __init__(self, batch_size: int = 1000, max_workers: Optional[int] = None):
         super().__init__(batch_size)
-        self.max_workers = max_workers or mp.cpu_count()
+        self.max_workers = min(max_workers or mp.cpu_count(), 4)
+        print(f"Initializing ParallelStrategy with {self.max_workers} workers")
 
     @staticmethod
     def _process_batch(batch: List[Dict]) -> Tuple[int, int, List[Dict]]:
-        """Process a batch of cards in a separate process."""
+        """Process a batch of cards in a separate process with proper cleanup"""
         connections.close_all()
-
-        success = 0
-        filtered = 0
+        success = filtered = 0
         failed = []
 
-        with transaction.atomic():
-            card_objects = []
-            for card in batch:
-                if filterCard(card):
-                    filtered += 1
-                    continue
-                card_objects.append(ScryfallCard.from_scryfall_card(card))
-            ScryfallCard.objects.bulk_create(card_objects)
-            success += len(card_objects)
+        try:
+            with transaction.atomic():
+                card_objects = []
+                for card in batch:
+                    if filterCard(card):
+                        filtered += 1
+                        continue
+                    card_objects.append(ScryfallCard.from_scryfall_card(card))
+
+                if card_objects:
+                    ScryfallCard.objects.bulk_create(card_objects, batch_size=1000)
+                success = len(card_objects)
+        except Exception as e:
+            print(f"Batch processing failed: {e}")
+            raise
+        finally:
+            del card_objects
+            gc.collect()
+
         return success, filtered, failed
 
-    def _chunk_data(self, data: List[Dict]) -> List[List[Dict]]:
-        """Split data into chunks for parallel processing."""
-        return [
-            data[i : i + self.batch_size] for i in range(0, len(data), self.batch_size)
-        ]
-
-    def process(self, cards: List[Dict]) -> ProcessingResult:
+    def process(self, cards: Iterator[Dict] | List[Dict]) -> ProcessingResult:
+        """Process cards from either an iterator or a list."""
         start_time = datetime.now()
         result = ProcessingResult()
 
-        # Split data into batches
-        batches = self._chunk_data(cards)
-        total_batches = len(batches)
+        # Convert iterator to list if needed
+        if isinstance(cards, Iterator):
+            cards_list = list(cards)
+        else:
+            cards_list = cards
 
-        print(f"Processing {len(cards)} cards in {total_batches} batches...")
+        print(f"Processing {len(cards_list)} total cards")
 
         with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
-            # Submit all batches to the process pool
-            future_to_batch = {
-                executor.submit(self._process_batch, batch): i
-                for i, batch in enumerate(batches)
-            }
+            batches = [
+                cards_list[i : i + self.batch_size]
+                for i in range(0, len(cards_list), self.batch_size)
+            ]
 
-            # Process completed batches with a progress bar
-            with tqdm(total=total_batches, desc="Processing batches") as pbar:
-                for future in as_completed(future_to_batch):
-                    try:
-                        success, filtered, failed = future.result()
-                        result.success_count += success
-                        result.filtered_count += filtered
-                        result.failed_cards.extend(failed)
-                    except Exception as e:
-                        batch_num = future_to_batch[future]
-                        print(f"Batch {batch_num} failed with exception: {e}")
-                    pbar.update(1)
+            print(f"Created {len(batches)} batches")
+            futures = []
+
+            for batch in batches:
+                futures.append(executor.submit(self._process_batch, batch))
+
+            for future in as_completed(futures):
+                try:
+                    success, filtered, failed = future.result()
+                    result.success_count += success
+                    result.filtered_count += filtered
+                    result.failed_cards.extend(failed)
+                except Exception as e:
+                    print(f"Future processing failed: {e}")
+                finally:
+                    del future
 
         result.processing_time = (datetime.now() - start_time).total_seconds()
         return result
@@ -161,6 +189,8 @@ class ParallelStrategy(ProcessingStrategy):
 
 class ScryfallExporter:
     """Service class for persisting Scryfall data to the database."""
+
+    _db_cleared = False
 
     def __init__(self):
         if os.getenv("PARALLEL_PROCESSING_ENABLED") == "true":
@@ -170,8 +200,7 @@ class ScryfallExporter:
 
     def process_cards(self, cards: List[Dict]) -> ProcessingResult:
         """Process cards using the specified strategy."""
-        print("Clearing scryfall_card database...")
-        ScryfallCard.objects.all().delete()
+        self._clear_database_once()
         return self.strategy.process(cards)
 
     def with_sequential_strategy(self) -> None:
@@ -179,3 +208,11 @@ class ScryfallExporter:
 
     def with_parallel_strategy(self) -> None:
         self.strategy = ParallelStrategy()
+
+    @classmethod
+    def _clear_database_once(cls) -> None:
+        """Clear the database only on the first execution."""
+        if not cls._db_cleared:
+            print("Clearing scryfall_card database...")
+            ScryfallCard.objects.all().delete()
+            cls._db_cleared = True
