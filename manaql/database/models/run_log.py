@@ -17,7 +17,7 @@ class Command(str, Enum):
 
 class RunLog(models.Model):
     id = models.AutoField(primary_key=True)
-    message = models.CharField(max_length=255, null=False, unique=True)
+    message = models.CharField(max_length=255, null=False, unique=False)
     command = models.CharField(max_length=31, null=False, choices=Command.choices())
     created_at = models.DateTimeField(default=now)
 
