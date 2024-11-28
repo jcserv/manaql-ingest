@@ -61,31 +61,27 @@ class SequentialStrategy(ProcessingStrategy):
         scryfall_cards = ScryfallCard.objects.all()
 
         # First pass: Create all unique cards
+        cards = []
         for scryfall_card in scryfall_cards:
             if scryfall_card.name not in processed_names:
-                try:
-                    card = Card.from_scryfall_card(scryfall_card)
-                    card.save()
-                    processed_names.add(scryfall_card.name)
-                    result.cards_created += 1
-                except Exception as e:
-                    print(f"Error creating card {scryfall_card.name}: {e}")
-                    result.failed_cards.append(scryfall_card.name)
-                    continue
+                cards.append(Card.from_scryfall_card(scryfall_card))
+                processed_names.add(scryfall_card.name)
+
+        Card.objects.bulk_create(cards)
 
         # Pre-fetch all cards for the second pass
         cards_by_name = {card.name: card for card in Card.objects.all()}
 
         # Second pass: Create all printings
+        printings = []
         for scryfall_card in scryfall_cards:
-            try:
-                card = cards_by_name.get(scryfall_card.name)
-                printing = Printing.from_scryfall_card(card.id, scryfall_card)
-                printing.save()
-                result.printings_created += 1
-            except Exception as e:
-                print(f"Error creating printing for {scryfall_card.name}: {e}")
+            card = cards_by_name.get(scryfall_card.name)
+            if not card:
                 result.failed_printings.append(scryfall_card.name)
+                continue
+            printings.append(Printing.from_scryfall_card(card.id, scryfall_card))
+
+        Printing.objects.bulk_create(printings)
 
         result.processing_time = (datetime.now() - start_time).total_seconds()
         return result
@@ -102,15 +98,13 @@ class ParallelStrategy(ProcessingStrategy):
         """Create all unique cards and return set of processed names."""
         processed_names = set()
 
+        cards = []
         for scryfall_card in scryfall_cards:
             if scryfall_card.name not in processed_names:
-                try:
-                    card = Card.from_scryfall_card(scryfall_card)
-                    card.save()
-                    processed_names.add(scryfall_card.name)
-                except Exception as e:
-                    print(f"Error creating card {scryfall_card.name}: {e}")
+                cards.append(Card.from_scryfall_card(scryfall_card))
+                processed_names.add(scryfall_card.name)
 
+        Card.objects.bulk_create(cards)
         return processed_names
 
     def _process_printing_batch(
@@ -118,7 +112,6 @@ class ParallelStrategy(ProcessingStrategy):
     ) -> tuple[List[str], int]:
         """Process a batch of printings."""
         failed_printings = []
-        printings_created = 0
 
         # Pre-fetch cards needed for this batch
         card_names = {sc.name for sc in scryfall_cards}
@@ -126,21 +119,17 @@ class ParallelStrategy(ProcessingStrategy):
             card.name: card for card in Card.objects.filter(name__in=card_names)
         }
 
+        printings = []
         for scryfall_card in scryfall_cards:
             card = cards_by_name.get(scryfall_card.name)
             if not card:
                 failed_printings.append(scryfall_card.name)
                 continue
 
-            try:
-                printing = Printing.from_scryfall_card(card.id, scryfall_card)
-                printing.save()
-                printings_created += 1
-            except Exception as e:
-                print(f"Error creating printing for {scryfall_card.name}: {e}")
-                failed_printings.append(scryfall_card.name)
+            printings.append(Printing.from_scryfall_card(card.id, scryfall_card))
 
-        return failed_printings, printings_created
+        Printing.objects.bulk_create(printings)
+        return failed_printings, len(printings)
 
     def process(self) -> ProcessingResult:
         start_time = datetime.now()

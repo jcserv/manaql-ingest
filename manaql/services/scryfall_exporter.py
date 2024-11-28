@@ -79,14 +79,14 @@ class SequentialStrategy(ProcessingStrategy):
         result = ProcessingResult()
 
         with transaction.atomic():
-            for card in tqdm(cards, desc="Processing cards sequentially"):
-                success, filtered, failed_card = process_card(card)
-                if success:
-                    result.success_count += 1
-                elif filtered:
+            card_objects = []
+            for card in cards:
+                if filterCard(card):
                     result.filtered_count += 1
-                elif failed_card:
-                    result.failed_cards.append(failed_card)
+                    continue
+                card_objects.append(ScryfallCard.from_scryfall_card(card))
+            ScryfallCard.objects.bulk_create(card_objects)
+            result.success_count = len(card_objects)
 
         result.processing_time = (datetime.now() - start_time).total_seconds()
         return result
@@ -109,15 +109,14 @@ class ParallelStrategy(ProcessingStrategy):
         failed = []
 
         with transaction.atomic():
+            card_objects = []
             for card in batch:
-                card_success, card_filtered, failed_card = process_card(card)
-                if card_success:
-                    success += 1
-                elif card_filtered:
+                if filterCard(card):
                     filtered += 1
-                elif failed_card:
-                    failed.append(failed_card)
-
+                    continue
+                card_objects.append(ScryfallCard.from_scryfall_card(card))
+            ScryfallCard.objects.bulk_create(card_objects)
+            success += len(card_objects)
         return success, filtered, failed
 
     def _chunk_data(self, data: List[Dict]) -> List[List[Dict]]:
