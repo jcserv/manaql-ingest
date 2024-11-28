@@ -25,7 +25,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         start_time = datetime.now()
-        print("Starting Scryfall data download...")
 
         client = ScryfallService("manaql-ingest", "0.1.0")
 

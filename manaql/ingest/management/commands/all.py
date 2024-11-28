@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from database.models.run_log import Command as MQLCommand
+from database.models.run_log import RunLog
 from django.core.management.base import BaseCommand
 from services.card_processor import CardProcessor
 from services.scryfall import ScryfallService
@@ -12,21 +14,26 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         start_time = datetime.now()
 
-        print("Starting Scryfall data download...")
+        RunLog.objects.create(command=MQLCommand.All, message="Starting command...")
         client = ScryfallService("manaql-ingest", "0.1.0")
         cards_data = client.download_all_cards()
 
-        print("Offloading Scryfall data to database...")
+        RunLog.objects.create(command=MQLCommand.Download, message="Download complete.")
         exporter = ScryfallExporter()
         result = exporter.process_cards(cards_data)
-        print(result)
+        RunLog.objects.create(
+            command=MQLCommand.Ingest, message=f"Ingestion complete.\n{result}"
+        )
 
-        print("Processing card data...")
         result = CardProcessor().process_cards()
-        print(result)
+        RunLog.objects.create(
+            command=MQLCommand.Process, message=f"Processing complete.\n{result}"
+        )
 
         end_time = datetime.now()
         duration = end_time - start_time
-        self.stdout.write(
-            self.style.SUCCESS(f"Ingestion complete.\n" f"Duration: {duration}")
+
+        RunLog.objects.create(
+            command=MQLCommand.All,
+            message=f"Command finished.\nDuration: {duration}",
         )
