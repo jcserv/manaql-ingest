@@ -2,6 +2,8 @@ from common.finish import Finish, get_finishes
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
+from database.models.scryfall_card import ScryfallCard
+
 
 class Printing(models.Model):
     id = models.AutoField(primary_key=True)
@@ -23,33 +25,41 @@ class Printing(models.Model):
     price_eur_etched = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 
     @staticmethod
-    def is_card_serialized(scryfall_card) -> bool:
+    def is_card_serialized(scryfall_card: ScryfallCard) -> bool:
         if not scryfall_card.promo_types:
             return False
         return "serialized" in scryfall_card.promo_types
 
     @staticmethod
-    def get_image_uris(scryfall_card) -> tuple[str | None, str | None]:
+    def get_image_uris(scryfall_card: ScryfallCard) -> tuple[str | None, str | None]:
         """Extract normal and back image URIs from card data."""
         image_uri = None
         back_image_uri = None
 
         if scryfall_card.image_uris:
             image_uri = scryfall_card.image_uris.get("normal", "")
+
+        # mdfc cards
         elif scryfall_card.card_faces and len(scryfall_card.card_faces) > 0:
-            if scryfall_card.card_faces[0].image_uris:
-                image_uri = scryfall_card.card_faces[0].image_uris.get("normal", "")
-            if (
-                len(scryfall_card.card_faces) > 1
-                and scryfall_card.card_faces[1].image_uris
-            ):
-                back_image_uri = scryfall_card.card_faces[1].image_uris.get(
-                    "normal", ""
-                )
+            front_card_face = scryfall_card.card_faces[0]
+            back_card_face = (
+                scryfall_card.card_faces[1]
+                if len(scryfall_card.card_faces) > 1
+                else None
+            )
+
+            front_image_uris = front_card_face.get("image_uris", None)
+            if front_image_uris:
+                image_uri = front_image_uris.get("normal", "")
+
+            if back_card_face and back_card_face.get("image_uris", None):
+                back_image_uris = back_card_face.get("image_uris", None)
+                back_image_uri = back_image_uris.get("normal", "")
+
         return image_uri, back_image_uri
 
     @staticmethod
-    def from_scryfall_card(card_id: int, scryfall_card):
+    def from_scryfall_card(card_id: int, scryfall_card: ScryfallCard):
         image_uri, back_image_uri = Printing.get_image_uris(scryfall_card)
 
         return Printing(
