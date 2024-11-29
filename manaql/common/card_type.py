@@ -32,24 +32,31 @@ def get_main_type(type_line: str | None) -> CardType:
     """Map Scryfall card type to our enum values."""
     if not type_line:
         return CardType.Unknown
-    if type_line.startswith(
+
+    card_type = type_line
+
+    # for mdfcs, set the main type to the front card
+    if "//" in type_line:
+        card_type = type_line.split("//")[0]
+
+    if card_type.startswith(
         "Enchant "
     ):  # Old cards have "Enchant" instead of "Enchantment", i.e. "Enchant Creature"
         return CardType.Enchantment
-    if CardType.Planeswalker.value in type_line:
+    if CardType.Planeswalker.value in card_type:
         return CardType.Planeswalker
-    if CardType.Battle.value in type_line:
+    if CardType.Battle.value in card_type:
         return CardType.Battle
-    if CardType.Land.value in type_line:
+    if CardType.Land.value in card_type:
         return CardType.Land
-    if CardType.Creature.value in type_line:
+    if CardType.Creature.value in card_type:
         return CardType.Creature
-    if CardType.Artifact.value in type_line:
+    if CardType.Artifact.value in card_type:
         return CardType.Artifact
-    if CardType.Enchantment.value in type_line:
+    if CardType.Enchantment.value in card_type:
         return CardType.Enchantment
-    if CardType.Sorcery.value in type_line:
+    if CardType.Sorcery.value in card_type:
         return CardType.Sorcery
-    if CardType.Instant.value in type_line:
+    if CardType.Instant.value in card_type:
         return CardType.Instant
     return CardType.Unknown

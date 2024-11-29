@@ -63,5 +63,5 @@ class TestCardType(TestCase):
     def test_get_main_type_mdfc_back_side(self):
         self.assertEqual(
             get_main_type("Sorcery // Land"),
-            CardType.Land,  # should be CardType.Sorcery, but we're not handling this case yet
+            CardType.Sorcery,
         )
