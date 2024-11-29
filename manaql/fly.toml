@@ -17,7 +17,7 @@ console_command = '/code/manage.py shell'
 
 [[vm]]
   memory = '1gb'
-  size = 'shared-1x'
+  size = 'shared-cpu-1x'
   cpus = 1
 
 [[statics]]
