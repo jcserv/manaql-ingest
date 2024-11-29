@@ -22,7 +22,7 @@ run:
 	@source scripts/set-env.sh && python3 manaql/manage.py all
 
 schedule:
-	fly machine run python:3.12-slim --vm-size performance-1x --vm-memory 3072 --schedule=daily --command "python manage.py all"
+	fly machine run python:3.12-slim --vm-size shared-1x --vm-memory 1024 --schedule=daily --command "python manage.py all"
 
 migrations:
 	@source scripts/set-env.sh && python3 manaql/manage.py makemigrations database
