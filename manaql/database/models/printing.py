@@ -1,5 +1,3 @@
-import re
-
 from common.finish import Finish, get_finishes
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
@@ -26,9 +24,9 @@ class Printing(models.Model):
 
     @staticmethod
     def is_card_serialized(scryfall_card) -> bool:
-        if not scryfall_card.collector_number:
+        if not scryfall_card.promo_types:
             return False
-        return bool(re.match(r"^\d+z$", scryfall_card.collector_number))
+        return "serialized" in scryfall_card.promo_types
 
     @staticmethod
     def get_image_uris(scryfall_card) -> tuple[str | None, str | None]:

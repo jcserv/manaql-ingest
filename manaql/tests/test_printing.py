@@ -6,14 +6,10 @@ from django.test import TestCase
 class TestPrinting(TestCase):
     def test_printing_is_card_serialized(self):
         serialized_card = ScryfallCard(
-            collector_number="99z",
+            promo_types=["serialized"],
         )
         self.assertTrue(Printing.is_card_serialized(serialized_card))
-
-    # def test_printing_is_serialized_works_with_exceptions(self):
-    #     exceptions = [
-    #         ScryfallCard(
-    #             set="inr",
-    #             collector_number="491",
-    #         ),
-    #     ]
+        not_serialized_card = ScryfallCard(
+            promo_types=[],
+        )
+        self.assertFalse(Printing.is_card_serialized(not_serialized_card))

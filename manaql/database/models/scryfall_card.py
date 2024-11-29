@@ -12,6 +12,7 @@ class ScryfallCard(models.Model):
     collector_number = models.CharField(max_length=31, null=True)
     type_line = models.CharField(max_length=255, null=True, blank=True)
     finishes = ArrayField(models.CharField(max_length=20), default=list)
+    promo_types = ArrayField(models.CharField(max_length=20), default=list)
 
     prices = models.JSONField(null=True)
     image_uris = models.JSONField(null=True)
@@ -26,7 +27,8 @@ class ScryfallCard(models.Model):
             set_name=scryfall_card.get("set_name", None),
             collector_number=scryfall_card.get("collector_number", None),
             type_line=scryfall_card.get("type_line", None),
-            finishes=scryfall_card.get("finishes", None),
+            finishes=scryfall_card.get("finishes", []),
+            promo_types=scryfall_card.get("promo_types", []),
             prices=scryfall_card.get("prices", None),
             image_uris=scryfall_card.get("image_uris", None),
             card_faces=scryfall_card.get("card_faces", None),
