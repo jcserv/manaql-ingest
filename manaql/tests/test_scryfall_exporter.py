@@ -39,6 +39,16 @@ class TestCardProcessor(TestCase):
             )
         )
 
+    def test_filter_should_not_filter_out_mdfc_cards(self):
+        self.assertFalse(
+            filterCard(
+                {
+                    **self.default_valid_card,
+                    "layout": "modal_dfc",
+                }
+            )
+        )
+
     def test_filter_should_filter_out_non_english(self):
         self.assertFalse(filterCard({**self.default_valid_card, "lang": "en"}))
         self.assertTrue(filterCard({**self.default_valid_card, "lang": None}))

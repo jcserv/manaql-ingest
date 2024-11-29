@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, Iterator, List, Optional, Tuple
 
+from common.scryfall import AllowedLayout
 from database.models.scryfall_card import ScryfallCard
 from django.db import connections, transaction
 
@@ -14,7 +15,7 @@ from django.db import connections, transaction
 def filterCard(scryfall_card: Dict) -> bool:
     if scryfall_card.get("lang", None) != "en":
         return True
-    if scryfall_card.get("layout", "") != "normal":
+    if scryfall_card.get("layout", "") not in AllowedLayout:
         return True
     if "paper" not in scryfall_card.get("games", []):
         return True
