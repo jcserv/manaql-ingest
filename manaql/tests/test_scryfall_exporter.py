@@ -49,6 +49,36 @@ class TestCardProcessor(TestCase):
             )
         )
 
+    def test_filter_should_not_filter_out_battle_cards(self):
+        self.assertFalse(
+            filterCard(
+                {
+                    **self.default_valid_card,
+                    "layout": "transform",
+                }
+            )
+        )
+
+    def test_filter_should_not_filter_out_saga_cards(self):
+        self.assertFalse(
+            filterCard(
+                {
+                    **self.default_valid_card,
+                    "layout": "saga",
+                }
+            )
+        )
+
+    def test_filter_should_not_filter_out_room_cards(self):
+        self.assertFalse(
+            filterCard(
+                {
+                    **self.default_valid_card,
+                    "layout": "split",
+                }
+            )
+        )
+
     def test_filter_should_filter_out_non_english(self):
         self.assertFalse(filterCard({**self.default_valid_card, "lang": "en"}))
         self.assertTrue(filterCard({**self.default_valid_card, "lang": None}))
