@@ -1,3 +1,5 @@
+import re
+
 from common.finish import Finish, get_finishes
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
@@ -9,6 +11,7 @@ class Printing(models.Model):
     set_code = models.CharField(max_length=7, null=False, db_column="set")
     set_name = models.CharField(max_length=255, null=False)
     collector_number = models.CharField(max_length=31, null=False)
+    is_serialized = models.BooleanField(default=False)
 
     image_uri = models.CharField(max_length=255, null=False)
     back_image_uri = models.CharField(max_length=255, null=True)
@@ -20,6 +23,12 @@ class Printing(models.Model):
     price_eur = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     price_eur_foil = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     price_eur_etched = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+
+    @staticmethod
+    def is_card_serialized(scryfall_card) -> bool:
+        if not scryfall_card.collector_number:
+            return False
+        return bool(re.match(r"^\d+z$", scryfall_card.collector_number))
 
     @staticmethod
     def get_image_uris(scryfall_card) -> tuple[str | None, str | None]:
@@ -50,6 +59,7 @@ class Printing(models.Model):
             set_code=scryfall_card.set_code,
             set_name=scryfall_card.set_name,
             collector_number=scryfall_card.collector_number,
+            is_serialized=Printing.is_card_serialized(scryfall_card),
             image_uri=image_uri,
             back_image_uri=back_image_uri,
             finishes=get_finishes(scryfall_card.finishes),
