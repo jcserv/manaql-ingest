@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: ksisoft/pgvector:16.3-alpine
     ports:
       - "5433:5432"
     environment:

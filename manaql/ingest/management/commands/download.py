@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from common.utils import get_artifact_file_path
 from django.core.management.base import BaseCommand
 from services.scryfall import ScryfallService
 
@@ -27,16 +26,14 @@ class Command(BaseCommand):
         start_time = datetime.now()
 
         client = ScryfallService("manaql-ingest", "0.1.0")
-
-        file_path = get_artifact_file_path(options["file_name"])
-        client.download_all_cards(save_path=str(file_path))
+        client.download_all_cards()
 
         end_time = datetime.now()
         duration = end_time - start_time
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Successfully downloaded Scryfall data to {file_path}\n"
+                f"Successfully downloaded Scryfall data\n"
                 f"Download completed in {duration}"
             )
         )

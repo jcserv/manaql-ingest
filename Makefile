@@ -7,10 +7,7 @@ test:
 	@source scripts/set-env.sh && python3 manaql/manage.py test tests
 
 download:
-	@source scripts/set-env.sh && python3 manaql/manage.py download --file=all_cards.json
-
-download-dry-run:
-	@source scripts/set-env.sh && python3 manaql/manage.py download --dry-run
+	@source scripts/set-env.sh && python3 manaql/manage.py download
 
 ingest:
 	@source scripts/set-env.sh && python3 manaql/manage.py ingest --file=all_cards.json

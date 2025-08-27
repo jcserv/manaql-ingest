@@ -19,8 +19,7 @@ manaql-ingest is a Django application that ingests Scryfall card data into a Pos
 `source .venv/bin/activate`
 
 3. Run `make setup`
-4. Run `poetry install`
-5. Run `make dev-db` to start a local postgres database, then `make migrate`
+4. Run `make dev-db` to start a local postgres database, then `make migrate`
 
 Then, to run the application:
 

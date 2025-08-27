@@ -63,27 +63,32 @@ class SequentialStrategy(ProcessingStrategy):
         print("Processing cards sequentially...")
         scryfall_cards = list(ScryfallCard.objects.all())
 
-        with transaction.atomic():
-            cards = []
-            for scryfall_card in scryfall_cards:
-                if scryfall_card.name not in processed_names:
+        cards = []
+        for scryfall_card in scryfall_cards:
+            if scryfall_card.name not in processed_names:
+                try:
                     cards.append(Card.from_scryfall_card(scryfall_card))
-                    processed_names.add(scryfall_card.name)
-
-            Card.objects.bulk_create(cards, batch_size=100)
-
-            cards_by_name = {card.name: card for card in Card.objects.all()}
-
-            printings = []
-            for scryfall_card in scryfall_cards:
-                card = cards_by_name.get(scryfall_card.name)
-                if not card:
-                    result.failed_printings.append(scryfall_card.name)
+                except Exception as e:
+                    print(f"Error creating card {scryfall_card.name}: {e}")
+                    result.failed_cards.append(scryfall_card.name)
                     continue
-                printings.append(Printing.from_scryfall_card(card.id, scryfall_card))
+                processed_names.add(scryfall_card.name)
 
-            # Use smaller batch size for bulk create
-            Printing.objects.bulk_create(printings, batch_size=100)
+        print("Creating cards")
+        Card.objects.bulk_create(cards, batch_size=100)
+
+        cards_by_name = {card.name: card for card in Card.objects.all()}
+
+        printings = []
+        for scryfall_card in scryfall_cards:
+            card = cards_by_name.get(scryfall_card.name)
+            if not card:
+                result.failed_printings.append(scryfall_card.name)
+                continue
+            printings.append(Printing.from_scryfall_card(card.id, scryfall_card))
+
+        print("Creating printings")
+        Printing.objects.bulk_create(printings, batch_size=100)
 
         result.processing_time = (datetime.now() - start_time).total_seconds()
         return result
