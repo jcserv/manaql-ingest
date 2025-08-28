@@ -38,6 +38,9 @@ class Card(models.Model):
 
     @staticmethod
     def from_scryfall_card(scryfall_card):
+        if not scryfall_card.name:
+            raise ValueError("Card must have a name")
+
         return Card(
             name=scryfall_card.name,
             main_type=get_main_type(scryfall_card.type_line),

@@ -135,4 +135,13 @@ class Keyword(str, Enum):
 
 def get_keywords(keywords: List[str]) -> List[Keyword]:
     """Map Scryfall keywords to our enum values."""
-    return [Keyword(k) for k in keywords]
+    if not keywords:
+        return []
+
+    result = []
+    for k in keywords:
+        try:
+            result.append(Keyword(k))
+        except ValueError:
+            continue
+    return result

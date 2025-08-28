@@ -3,7 +3,7 @@ import multiprocessing as mp
 import os
 from abc import ABC, abstractmethod
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Iterator, List, Optional, Tuple
 
@@ -43,12 +43,8 @@ class ProcessingResult:
 
     success_count: int = 0
     filtered_count: int = 0
-    failed_cards: List[Dict] = None
+    failed_cards: List[Dict] = field(default_factory=list)
     processing_time: float = 0.0  # in seconds
-
-    def __post_init__(self):
-        if self.failed_cards is None:
-            self.failed_cards = []
 
     def __str__(self) -> str:
         return (
@@ -81,23 +77,48 @@ class SequentialStrategy(ProcessingStrategy):
         total_processed = 0
 
         print("Starting sequential processing...")
-        with transaction.atomic():
-            card_objects = []
-            for card in cards:
-                total_processed += 1
-                if filterCard(card):
-                    result.filtered_count += 1
-                    continue
-                card_objects.append(ScryfallCard.from_scryfall_card(card))
 
-                if len(card_objects) >= 1000:
-                    ScryfallCard.objects.bulk_create(card_objects)
+        if isinstance(cards, Iterator):
+            cards_list = list(cards)
+        else:
+            cards_list = cards
+
+        print(f"Processing {len(cards_list)} scryfall cards")
+
+        batch_size = 500
+        card_objects = []
+
+        for card in cards_list:
+            total_processed += 1
+
+            if filterCard(card):
+                result.filtered_count += 1
+                continue
+
+            card_objects.append(ScryfallCard.from_scryfall_card(card))
+
+            if len(card_objects) >= batch_size:
+                try:
+                    with transaction.atomic():
+                        ScryfallCard.objects.bulk_create(
+                            card_objects, batch_size=batch_size
+                        )
                     result.success_count += len(card_objects)
+                except Exception as e:
+                    print(f"Error processing batch: {e}")
+                    # continue with next batch instead of failing completely
+                finally:
                     card_objects = []
 
-            if card_objects:
-                ScryfallCard.objects.bulk_create(card_objects)
+        if card_objects:
+            try:
+                with transaction.atomic():
+                    ScryfallCard.objects.bulk_create(
+                        card_objects, batch_size=batch_size
+                    )
                 result.success_count += len(card_objects)
+            except Exception as e:
+                print(f"Error processing final batch: {e}")
 
         print(f"Total cards processed: {total_processed}")
         print(f"Success: {result.success_count}")
@@ -120,7 +141,7 @@ class ParallelStrategy(ProcessingStrategy):
         """Process a batch of cards in a separate process with proper cleanup"""
         connections.close_all()
         success = filtered = 0
-        failed = []
+        failed: List[Dict] = []
 
         try:
             with transaction.atomic():
@@ -154,7 +175,7 @@ class ParallelStrategy(ProcessingStrategy):
         else:
             cards_list = cards
 
-        print(f"Processing {len(cards_list)} total cards")
+        print(f"Processing {len(cards_list)} scryfall cards")
 
         with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
             batches = [
@@ -187,6 +208,7 @@ class ScryfallExporter:
     """Service class for persisting Scryfall data to the database."""
 
     _db_cleared = False
+    strategy: ProcessingStrategy
 
     def __init__(self):
         if os.getenv("PARALLEL_PROCESSING_ENABLED") == "true":

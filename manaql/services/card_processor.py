@@ -2,7 +2,7 @@ import multiprocessing as mp
 import os
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional, Set
 
@@ -12,7 +12,10 @@ from database.models.scryfall_card import ScryfallCard
 from django.db import transaction
 from tqdm import tqdm
 
-from .db_retry import with_retry  # Import the retry decorator
+from .db_retry import with_retry
+
+CHUNK_SIZE = 1000
+PROCESSING_BATCH_SIZE = 500
 
 
 @dataclass
@@ -21,15 +24,9 @@ class ProcessingResult:
 
     cards_created: int = 0
     printings_created: int = 0
-    failed_cards: List[str] = None
-    failed_printings: List[str] = None
+    failed_cards: List[str] = field(default_factory=list)
+    failed_printings: List[str] = field(default_factory=list)
     processing_time: float = 0.0
-
-    def __post_init__(self):
-        if self.failed_cards is None:
-            self.failed_cards = []
-        if self.failed_printings is None:
-            self.failed_printings = []
 
     def __str__(self) -> str:
         return (
@@ -54,41 +51,141 @@ class ProcessingStrategy(ABC):
 class SequentialStrategy(ProcessingStrategy):
     """Process cards sequentially."""
 
-    @with_retry(max_retries=3)
-    def process(self) -> ProcessingResult:
-        start_time = datetime.now()
-        result = ProcessingResult()
-        processed_names = set()
+    def _process_unique_cards(self, scryfall_cards) -> tuple[list, set, list]:
+        """Process unique cards from ScryfallCard objects.
 
-        print("Processing cards sequentially...")
-        scryfall_cards = list(ScryfallCard.objects.all())
-
+        Returns:
+            tuple: (cards_list, processed_names_set, failed_cards_list)
+        """
         cards = []
+        processed_names = set()
+        failed_cards = []
+        card_count = 0
+
+        print("Processing unique cards...")
         for scryfall_card in scryfall_cards:
             if scryfall_card.name not in processed_names:
                 try:
                     cards.append(Card.from_scryfall_card(scryfall_card))
+                    processed_names.add(scryfall_card.name)
+                    card_count += 1
+                except Exception as e:
+                    print(f"Error creating card {scryfall_card.name}: {e}")
+                    failed_cards.append(scryfall_card.name)
+                    continue
+
+        print(f"Created {len(cards)} unique cards")
+        return cards, processed_names, failed_cards
+
+    def _create_cards_in_database(self, cards: list) -> None:
+        """Bulk create cards in the database."""
+        if not cards:
+            print("No cards to create")
+            return
+
+        print(f"Creating {len(cards)} cards in database...")
+        with transaction.atomic():
+            Card.objects.bulk_create(cards, batch_size=PROCESSING_BATCH_SIZE)
+        print("Cards created successfully")
+
+    def _get_cards_by_name(self) -> dict:
+        """Fetch all cards from database and create name mapping."""
+        print("Fetching cards for printing creation...")
+        cards_by_name = {card.name: card for card in Card.objects.all()}
+        print(f"Retrieved {len(cards_by_name)} cards from database")
+        return cards_by_name
+
+    def _process_printings(
+        self, scryfall_cards, cards_by_name: dict
+    ) -> tuple[list, list]:
+        """Process printings from ScryfallCard objects.
+
+        Returns:
+            tuple: (printings_list, failed_printings_list)
+        """
+        printings = []
+        failed_printings = []
+        printing_count = 0
+
+        print("Processing printings...")
+        for scryfall_card in scryfall_cards:
+            card = cards_by_name.get(scryfall_card.name)
+            if not card:
+                failed_printings.append(scryfall_card.name)
+                continue
+
+            printings.append(Printing.from_scryfall_card(card.id, scryfall_card))
+            printing_count += 1
+
+        print(f"Created {len(printings)} printings")
+        return printings, failed_printings
+
+    def _create_printings_in_database(self, printings: list) -> None:
+        """Bulk create printings in the database."""
+        if not printings:
+            print("No printings to create")
+            return
+
+        print(f"Creating {len(printings)} printings in database...")
+        with transaction.atomic():
+            Printing.objects.bulk_create(printings, batch_size=PROCESSING_BATCH_SIZE)
+        print("Printings created successfully")
+
+    @with_retry(max_retries=3)
+    def process(self) -> ProcessingResult:
+        """Process cards and printings in a truly single pass through ScryfallCard data."""
+        start_time = datetime.now()
+        result = ProcessingResult()
+        processed_names = set()
+        cards = []
+        printings_data = []
+        card_count = 0
+
+        print("Processing cards and printings...")
+
+        scryfall_cards = ScryfallCard.objects.iterator(chunk_size=CHUNK_SIZE)
+
+        for scryfall_card in scryfall_cards:
+            if scryfall_card.name not in processed_names:
+                try:
+                    cards.append(Card.from_scryfall_card(scryfall_card))
+                    processed_names.add(scryfall_card.name)
+                    card_count += 1
                 except Exception as e:
                     print(f"Error creating card {scryfall_card.name}: {e}")
                     result.failed_cards.append(scryfall_card.name)
                     continue
-                processed_names.add(scryfall_card.name)
+            printings_data.append((scryfall_card.name, scryfall_card))
 
-        print("Creating cards")
-        Card.objects.bulk_create(cards, batch_size=100)
+        if cards:
+            print(f"Creating {len(cards)} cards...")
+            with transaction.atomic():
+                Card.objects.bulk_create(cards, batch_size=PROCESSING_BATCH_SIZE)
+            result.cards_created = len(cards)
 
+        print("Fetching cards for printing creation...")
         cards_by_name = {card.name: card for card in Card.objects.all()}
 
+        print("Processing printings from stored data...")
         printings = []
-        for scryfall_card in scryfall_cards:
-            card = cards_by_name.get(scryfall_card.name)
-            if not card:
-                result.failed_printings.append(scryfall_card.name)
-                continue
-            printings.append(Printing.from_scryfall_card(card.id, scryfall_card))
+        printing_count = 0
 
-        print("Creating printings")
-        Printing.objects.bulk_create(printings, batch_size=100)
+        for card_name, scryfall_card in printings_data:
+            card = cards_by_name.get(card_name)
+            if not card:
+                result.failed_printings.append(card_name)
+                continue
+
+            printings.append(Printing.from_scryfall_card(card.id, scryfall_card))
+            printing_count += 1
+
+        if printings:
+            print(f"Creating {len(printings)} printings...")
+            with transaction.atomic():
+                Printing.objects.bulk_create(
+                    printings, batch_size=PROCESSING_BATCH_SIZE
+                )
+            result.printings_created = len(printings)
 
         result.processing_time = (datetime.now() - start_time).total_seconds()
         return result
@@ -185,6 +282,7 @@ class CardProcessor:
     """Service class for processing card data from ScryfallCard table."""
 
     _db_cleared = False
+    strategy: ProcessingStrategy
 
     def __init__(self):
         if os.getenv("PARALLEL_PROCESSING_ENABLED") == "true":
