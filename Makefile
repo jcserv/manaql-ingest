@@ -15,6 +15,9 @@ ingest:
 process:
 	@source scripts/set-env.sh && python3 manaql/manage.py process
 
+generate-embeddings:
+	@source scripts/set-env.sh && python3 manaql/manage.py generate_embeddings --batch-size 50
+
 run:
 	@source scripts/set-env.sh && python3 manaql/manage.py all
 

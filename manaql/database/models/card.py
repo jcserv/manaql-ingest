@@ -5,6 +5,7 @@ from common.game import Game, get_games
 from common.keyword import get_keywords
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from pgvector.django import VectorField
 
 
 class Card(models.Model):
@@ -35,6 +36,8 @@ class Card(models.Model):
 
     reserved = models.BooleanField(default=False)
     game_changer = models.BooleanField(default=False)
+
+    embedding = VectorField(dimensions=1536, null=True, blank=True)
 
     @staticmethod
     def from_scryfall_card(scryfall_card):

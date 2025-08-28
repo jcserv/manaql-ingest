@@ -1,6 +1,8 @@
 DJANGO_SECRET_KEY="i'm indifferent towards pineapples on pizza"
+ENVIRONMENT=dev
 POSTGRES_DB=manaql
 POSTGRES_USER=root
 POSTGRES_PASSWORD=password
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
+OPENAI_API_KEY=

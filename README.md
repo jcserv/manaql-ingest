@@ -27,6 +27,8 @@ Run `make run` to run the entire etl process OR:
 - `make download` to download the Scryfall data
 - `make ingest` to ingest the Scryfall data into the database
 - `make process` to process the Scryfall data into the card/printings tables
+- `make generate-embeddings` to generate embeddings for the cards
+  - note: this will take ~5.1 hrs and charge you for about $0.50-$1.00 in total
 
 TODO:
 - async.io instead of tqdm?

@@ -52,8 +52,12 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "ingest.wsgi.application"
 
+THIRTY_MINUTES = 1800
+
 DATABASES = {
-    "default": dj_database_url.config(default=env("DATABASE_URL"), conn_max_age=600)
+    "default": dj_database_url.config(
+        default=env("DATABASE_URL"), conn_max_age=THIRTY_MINUTES
+    )
     if env("ENVIRONMENT") == "production"
     else {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
@@ -62,6 +66,7 @@ DATABASES = {
         "PASSWORD": env("POSTGRES_PASSWORD"),
         "HOST": env("POSTGRES_HOST"),
         "PORT": env("POSTGRES_PORT"),
+        "CONN_MAX_AGE": THIRTY_MINUTES,
     }
 }
 
