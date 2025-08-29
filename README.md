@@ -1,7 +1,5 @@
 # manaql-ingest
 
-![visitors](https://img.shields.io/endpoint?url=https://vu-mi.com/api/v1/views?id=jcserv/manaql-ingest)
-
 manaql-ingest is a Django application that ingests Scryfall card data into a PostgreSQL database, to be used by [manaql-api](https://github.com/jcserv/manaql) project.
 
 ## installation
