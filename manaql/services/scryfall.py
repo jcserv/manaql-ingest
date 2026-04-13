@@ -97,3 +97,28 @@ class ScryfallService:
             for card in card_stream:
                 cards.append(card)
         return cards
+
+    def download_bulk_data_to_file(self, destination: Path) -> Path:
+        """Download the Scryfall bulk data file directly to ``destination``.
+
+        If the source is gzipped, it is decompressed so the resulting file is
+        plain JSON. Returns the final path written.
+        """
+        download_url, expected_size = self._get_bulk_data_url()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+
+        source_name = os.path.basename(urlparse(download_url).path)
+        is_gzipped = source_name.endswith(".gz")
+
+        if is_gzipped:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir) / source_name
+                self._download_file(download_url, temp_path, expected_size)
+                print(f"Decompressing to {destination}")
+                with gzip.open(temp_path, "rb") as src, open(destination, "wb") as dst:
+                    for chunk in iter(lambda: src.read(8192), b""):
+                        dst.write(chunk)
+        else:
+            self._download_file(download_url, destination, expected_size)
+
+        return destination

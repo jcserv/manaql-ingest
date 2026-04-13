@@ -1,7 +1,10 @@
 from datetime import datetime
+from pathlib import Path
 
 from django.core.management.base import BaseCommand
 from services.scryfall import ScryfallService
+
+ARTIFACTS_DIR = Path("artifacts")
 
 
 class Command(BaseCommand):
@@ -17,23 +20,30 @@ class Command(BaseCommand):
 
         parser.add_argument(
             "--dry-run",
-            type=bool,
-            help="Whether to run the command in dry-run mode (no data will be saved)",
-            default=False,
+            action="store_true",
+            help="Fetch the bulk data URL without writing an artifact",
         )
 
     def handle(self, *args, **options):
         start_time = datetime.now()
 
         client = ScryfallService("manaql-ingest", "0.1.0")
-        client.download_all_cards()
 
-        end_time = datetime.now()
-        duration = end_time - start_time
+        if options["dry_run"]:
+            url, size = client._get_bulk_data_url()
+            self.stdout.write(
+                self.style.SUCCESS(f"Dry run: would download {url} ({size} bytes)")
+            )
+            return
+
+        destination = ARTIFACTS_DIR / options["file_name"]
+        saved_path = client.download_bulk_data_to_file(destination)
+
+        duration = datetime.now() - start_time
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Successfully downloaded Scryfall data\n"
+                f"Successfully downloaded Scryfall data to {saved_path}\n"
                 f"Download completed in {duration}"
             )
         )

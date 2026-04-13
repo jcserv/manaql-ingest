@@ -1,31 +1,32 @@
-[tool.poetry]
+[project]
 name = "manaql"
 version = "0.1.0"
 description = ""
-authors = ["jcserv <jarrod.servilla@gmail.com>"]
+authors = [{ name = "jcserv", email = "jarrod.servilla@gmail.com" }]
 readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "asgiref>=3.8.1",
+    "Django>=5.1.4",
+    "gunicorn>=23.0.0",
+    "psycopg2-binary>=2.9.10",
+    "sqlparse>=0.5.2",
+    "requests>=2.32.3",
+    "tqdm>=4.67.1",
+    "django-environ>=0.11.2",
+    "dj-database-url>=2.3.0",
+    "ijson>=3.3.0",
+    "voyageai>=0.3.0",
+    "pgvector>=0.2.5",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-asgiref = "^3.8.1"
-Django = "^5.1.4"
-gunicorn = "^23.0.0"
-psycopg2 = "^2.9.10"
-sqlparse = "^0.5.2"
-requests = "^2.32.3"
-tqdm = "^4.67.1"
-django-environ = "^0.11.2"
-dj-database-url = "^2.3.0"
-ijson = "^3.3.0"
-openai = "^1.54.0"
-pgvector = "^0.2.5"
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+    "pre-commit>=4.0.1",
+    "datamodel-code-generator>=0.26.3",
+    "pytest>=8.3.3",
+]
 
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.8.0"
-pre-commit = "^4.0.1"
-datamodel-code-generator = "^0.26.3"
-pytest = "^8.3.3"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.uv]
+package = false
